@@ -1,0 +1,7 @@
+node_modules
+plugins.json
+plugins
+managedPlugins
+unmanagedPlugins
+.idea
+.yarn

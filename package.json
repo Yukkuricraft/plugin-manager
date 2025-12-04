@@ -1,0 +1,29 @@
+{
+  "name": "plugins-utils",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "generate-openapi": "yarn openapi-typescript https://docs.modrinth.com/openapi.yaml --output ./src/modrinth.ts",
+    "run-cli": "tsx ./src/index.ts"
+  },
+  "type": "module",
+  "dependencies": {
+    "@inquirer/prompts": "^8.0.2",
+    "chalk": "^5.6.2",
+    "openapi-fetch": "^0.15.0",
+    "semver": "^7.7.3",
+    "yargs": "^18.0.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/semver": "^7",
+    "@types/yargs": "^17.0.35",
+    "openapi-typescript": "^7.10.1",
+    "prettier": "^3.7.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "private": true,
+  "packageManager": "yarn@4.12.0"
+}
