@@ -5,3 +5,4 @@ managedPlugins
 unmanagedPlugins
 .idea
 .yarn
+changelog.md

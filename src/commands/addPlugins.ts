@@ -51,8 +51,10 @@ async function addPlugin(plugins: Plugins, pluginIndicator: string, gameVersion?
   }
 
   const existingAllIdx = plugins.all.findIndex((p) => p.id === project.id)
+  const existingDependedOnBy = existingAllIdx !== -1 ? plugins.all[existingAllIdx].dependedOnBy : new Set<string>()
 
   if (existingAllIdx !== -1) plugins.all.splice(existingAllIdx, 1)
+
   plugins.added[project.slug] = projectVersion.version_number
   const versionFile = projectVersion.files.find((f) => f.primary) ?? projectVersion.files[0]
 
@@ -66,19 +68,25 @@ async function addPlugin(plugins: Plugins, pluginIndicator: string, gameVersion?
     size: versionFile.size,
     filename: versionFile.filename,
     publishedAt: projectVersion.date_published,
+    dependedOnBy: existingDependedOnBy,
   })
 
   // Update the plugins ahead of formatting dependency info, so we can show conflicts on newly added plugins
   const depsToProcess = []
-  depsToProcess.push(...depInfos)
-  for (const dep of depsToProcess) {
+  depsToProcess.push(...depInfos.map((d) => ({ dep: d, dependant: project.id })))
+  for (const { dep, dependant } of depsToProcess) {
     if (dep.type !== 'required') continue
 
     const existing = plugins.all.find((p) => p.id === dep.projectId)
-    if (existing?.version && dep.version && semver.compare(existing.version, dep.version) >= 0) continue
-    else if (existing) {
+    if (existing?.version && dep.version && semver.compare(existing.version, dep.version) >= 0) {
+      existing.dependedOnBy.add(dependant)
+      continue
+    } else if (existing) {
       plugins.all.splice(plugins.all.indexOf(existing), 1)
     }
+
+    const dependedOnBy = existing?.dependedOnBy ?? new Set<string>()
+    dependedOnBy.add(dependant)
 
     plugins.all.push({
       slug: dep.projectSlug ?? null,
@@ -90,10 +98,11 @@ async function addPlugin(plugins: Plugins, pluginIndicator: string, gameVersion?
       size: dep.size,
       filename: dep.filename,
       publishedAt: dep.publishedAt,
+      dependedOnBy: dependedOnBy,
     })
 
     for (const depDep of dep.dependencies) {
-      depsToProcess.push(depDep)
+      depsToProcess.push({ dep: depDep, dependant: dep.projectId })
     }
   }
 

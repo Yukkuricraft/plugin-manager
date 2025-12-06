@@ -55,19 +55,27 @@ export default async function updatePlugins(gameVersion?: string, featured?: boo
       sha512: c.primaryFile.hashes.sha512 ?? null,
       sha1: c.primaryFile.hashes.sha1 ?? null,
       publishedAt: c.newVersion.projectVersion.date_published,
+      dependedOnBy: new Set<string>(),
     })),
   )
 
-  const depsToProcess = changes.flatMap((c) => c.newVersion.dependencies)
+  const depsToProcess = changes.flatMap((c) =>
+    c.newVersion.dependencies.map((d) => ({ dep: d, dependant: c.newVersion.projectVersion.project_id })),
+  )
 
-  for (let dep of depsToProcess) {
+  for (let { dep, dependant } of depsToProcess) {
     if (dep.type !== 'required') continue
 
     const existing = newPlugins.all.find((p) => p.id === dep.projectId)
-    if (existing?.version && dep.version && semver.compare(existing.version, dep.version) >= 0) continue
-    else if (existing) {
+    if (existing?.version && dep.version && semver.compare(existing.version, dep.version) >= 0) {
+      existing.dependedOnBy.add(dependant)
+      continue
+    } else if (existing) {
       newPlugins.all.splice(newPlugins.all.indexOf(existing), 1)
     }
+
+    const dependedOnBy = existing?.dependedOnBy ?? new Set<string>()
+    dependedOnBy.add(dependant)
 
     newPlugins.all.push({
       slug: dep.projectSlug ?? null,
@@ -79,11 +87,12 @@ export default async function updatePlugins(gameVersion?: string, featured?: boo
       size: dep.size,
       filename: dep.filename,
       publishedAt: dep.publishedAt,
+      dependedOnBy: dependedOnBy,
     })
     newProjectIds.push(dep.projectId)
 
     for (const depDep of dep.dependencies) {
-      depsToProcess.push(depDep)
+      depsToProcess.push({ dep: depDep, dependant: dep.projectId })
     }
   }
 
