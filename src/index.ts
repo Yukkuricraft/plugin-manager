@@ -1,11 +1,12 @@
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
-import searchPlugins from './commands/searchPlugins.js'
+
 import addPlugins from './commands/addPlugins.js'
-import viewPlugins from './commands/viewPlugins.js'
-import removePlugins from './commands/removePlugins.js'
-import updatePlugins from './commands/updatePlugins.js'
 import installPlugins from './commands/installPlugins.js'
+import removePlugins from './commands/removePlugins.js'
+import searchPlugins from './commands/searchPlugins.js'
+import updatePlugins from './commands/updatePlugins.js'
+import viewPlugins from './commands/viewPlugins.js'
 
 await yargs()
   .scriptName('plugins')

@@ -1,8 +1,12 @@
-import client from './client.js'
-import type { components } from './modrinth.js'
 import * as prompts from '@inquirer/prompts'
-import { Plugins } from './pluginList.js'
 import chalk from 'chalk'
+import { createHash } from 'node:crypto'
+import { createReadStream } from 'node:fs'
+
+import type { components } from './modrinth.js'
+
+import { Plugins } from '../../pluginList.js'
+import client from './client.js'
 
 export interface ExternalDependencyInfo {
   type: 'external'
@@ -138,7 +142,7 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
       if (info.filename === undefined) return ''
       else return chalk.red(`Extenal plugin ${info.filename}. Make sure to note it somewhere safe`)
     case 'incompatible':
-      const inPlugins = plugins.all.find((p) => p.id === info.projectId)
+      const inPlugins = plugins.all.modrinth[info.projectId]
       if (inPlugins) {
         if (inPlugins.versionId === info.versionId) {
           return chalk.red(
@@ -236,26 +240,25 @@ export async function getPluginVersion(
     for (const projVersion of projectVersions) {
       if (projVersion.status === 'unlisted') continue
       if (projVersion.loaders?.includes('paper'))
+        switch (projVersion.version_type) {
+          case 'alpha':
+            if (!lastAlphaVersion) lastAlphaVersion = projVersion
+            if (lastAlphaVersion.date_published < projVersion.date_published) lastAlphaVersion = projVersion
 
-      switch (projVersion.version_type) {
-        case 'alpha':
-          if (!lastAlphaVersion) lastAlphaVersion = projVersion
-          if (lastAlphaVersion.date_published < projVersion.date_published) lastAlphaVersion = projVersion
+            break
+          case 'beta':
+            if (!lastBetaVersion) lastBetaVersion = projVersion
+            if (lastBetaVersion.date_published < projVersion.date_published) lastBetaVersion = projVersion
 
-          break
-        case 'beta':
-          if (!lastBetaVersion) lastBetaVersion = projVersion
-          if (lastBetaVersion.date_published < projVersion.date_published) lastBetaVersion = projVersion
+            break
+          case 'release':
+            if (!lastReleaseVersion) lastReleaseVersion = projVersion
+            if (lastReleaseVersion.date_published < projVersion.date_published) lastReleaseVersion = projVersion
 
-          break
-        case 'release':
-          if (!lastReleaseVersion) lastReleaseVersion = projVersion
-          if (lastReleaseVersion.date_published < projVersion.date_published) lastReleaseVersion = projVersion
-
-          break
-        default:
-          throw new Error('Unexpected version type')
-      }
+            break
+          default:
+            throw new Error('Unexpected version type')
+        }
     }
 
     const all = [lastReleaseVersion, lastBetaVersion, lastAlphaVersion].filter((v) => v !== undefined)
@@ -292,4 +295,26 @@ export async function getPluginVersion(
   const depInfos = await Promise.all(deps.map(getDependencyInfo))
 
   return { projectVersion, dependencies: depInfos, changelog: changelogArr }
+}
+
+export function fileHash(file: string) {
+  return new Promise<{ sha1: string; sha512: string }>((resolve, reject) => {
+    const sha1 = createHash('sha1')
+    const sha512 = createHash('sha512')
+    sha1.setEncoding('hex')
+    sha512.setEncoding('hex')
+
+    const stream = createReadStream(file)
+    stream.pipe(sha1)
+    stream.pipe(sha512)
+
+    stream.once('error', reject)
+
+    stream.once('end', () => {
+      resolve({
+        sha1: sha1.read(),
+        sha512: sha512.read(),
+      })
+    })
+  })
 }

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "generate-openapi": "yarn openapi-typescript https://docs.modrinth.com/openapi.yaml --output ./src/modrinth.ts",
+    "generate-openapi": "yarn openapi-typescript https://docs.modrinth.com/openapi.yaml --output src/sources/modrinth/modrinth.ts",
     "run-cli": "tsx ./src/index.ts"
   },
   "type": "module",
