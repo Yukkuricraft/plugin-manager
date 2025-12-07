@@ -1,7 +1,7 @@
-import chalk from 'chalk'
 import semver from 'semver'
 
 import { Plugins } from '../../pluginList.js'
+import { output } from '../../utils/output.js'
 import client from './client.js'
 import { formatDependencyInfo, getPluginVersion } from './utils.js'
 
@@ -22,12 +22,19 @@ export default async function addPlugin(
   if (plugins.added[`modrinth:${plugin}`]) {
     if (version) {
       if (version !== plugins.added[`modrinth:${plugin}`]) {
-        console.log(chalk.blue('Plugin already in added list. Updating it to the desired version instead'))
+        output.info(
+          `Plugin ${output.pluginName(plugin)} already in added list. Updating it to the desired version instead`,
+        )
       } else {
-        console.log(chalk.blue('Plugin already in added list with the specified version. Exiting early'))
+        output.info(
+          `Plugin ${output.pluginName(plugin)} already in added list with the specified version. Exiting early`,
+        )
+        return
       }
     } else {
-      console.log(chalk.blue('Plugin already in added list, but no version specified in command. Updating'))
+      output.info(
+        `Plugin ${output.pluginName(plugin)} already in added list, but no version specified in command. Updating`,
+      )
     }
   }
 
@@ -111,10 +118,11 @@ export default async function addPlugin(
   }
 
   if (depInfos.length > 0) {
-    console.log(
-      `${project.slug} has dependencies:\n${depInfos.map((d) => '  ' + formatDependencyInfo(d, plugins, 2)).join('\n')}`,
-    )
+    output.dependency(`${output.pluginName(project.slug)} has dependencies:`)
+    for (const d of depInfos) {
+      console.log(`  ${formatDependencyInfo(d, plugins, 2)}`)
+    }
   }
 
-  console.log(chalk.yellow(`Adding ${project.title ?? plugin}`))
+  output.success(`Adding ${output.pluginName(project.title ?? plugin)}`)
 }

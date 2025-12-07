@@ -1,4 +1,3 @@
-import chalk from 'chalk'
 import fs from 'fs/promises'
 import { createWriteStream } from 'node:fs'
 import { Readable } from 'node:stream'
@@ -8,6 +7,7 @@ import { type ReadableStream } from 'node:stream/web'
 import type { components } from './modrinth.js'
 
 import { AllPlugins } from '../../pluginList.js'
+import { output } from '../../utils/output.js'
 import client from './client.js'
 import { fileHash } from './utils.js'
 
@@ -58,7 +58,7 @@ export default async function install(plugins: AllPlugins): Promise<void> {
     if (!projectId) {
       await fs.rm(`./managedPlugins/${file}`)
     } else {
-      console.log(chalk.blue(`File matches for ./managedPlugins/${file}, skipping`))
+      output.file(file, 'skipped')
       projectsToSkip.push(projectId)
     }
   }
@@ -73,7 +73,7 @@ export default async function install(plugins: AllPlugins): Promise<void> {
 
         const fileStream = createWriteStream(`./managedPlugins/${file.filename}`)
         await finished(Readable.fromWeb(res.body as ReadableStream).pipe(fileStream))
-        console.log(chalk.green(`Downloaded ./managedPlugins/${file.filename}`))
+        output.file(file.filename, 'downloaded')
       }),
   )
 }

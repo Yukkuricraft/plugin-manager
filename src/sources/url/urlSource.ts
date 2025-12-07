@@ -5,8 +5,8 @@ import { createWriteStream } from 'node:fs'
 import { finished } from 'node:stream/promises'
 import { Readable } from 'node:stream'
 import { ReadableStream } from 'node:stream/web'
-import chalk from 'chalk'
 import contentDisposition from 'content-disposition'
+import { output } from '../../utils/output.js'
 
 const urlSource: PluginSource<UrlPlugin> = {
   prefix: 'url',
@@ -19,7 +19,10 @@ const urlSource: PluginSource<UrlPlugin> = {
   },
   async viewPlugins(plugins: { plugin: UrlPlugin; id: string }[]): Promise<void> {
     for (const { plugin, id } of plugins) {
-      console.log(`${id}: ${plugin.url}`)
+      output.pluginCard({
+        title: id,
+        url: plugin.url,
+      })
     }
   },
   async addPlugin(plugins: Plugins, pluginIndicator: string): Promise<void> {
@@ -57,7 +60,7 @@ const urlSource: PluginSource<UrlPlugin> = {
 
         const fileStream = createWriteStream(`./managedPlugins/${filename}`)
         await finished(Readable.fromWeb(res.body as ReadableStream).pipe(fileStream))
-        console.log(chalk.green(`Downloaded ./managedPlugins/${filename}`))
+        output.file(filename, 'downloaded')
       }),
     )
   },

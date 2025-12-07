@@ -21,7 +21,7 @@ export default async function viewPlugins(plugins: string[]) {
 
     const existing = sources.get(source) ?? []
     existing.push(pluginWithId)
-    if (sources.has(source)) sources.set(source, existing)
+    if (!sources.has(source)) sources.set(source, existing)
   })
 
   const entries = [...sources.entries()]

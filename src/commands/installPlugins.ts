@@ -1,12 +1,12 @@
-import chalk from 'chalk'
 import fs from 'fs/promises'
 
 import { loadPlugins } from '../pluginList.js'
 import { allPluginSources } from '../sources/pluginSource.js'
+import { output } from '../utils/output.js'
 
 export default async function installPlugins() {
   const plugins = await loadPlugins()
-  console.log(chalk.blue('Downloading plugins...'))
+  output.download('Downloading plugins...')
 
   await fs.rm('./plugins', { recursive: true, force: true })
   await fs.mkdir('./managedPlugins', { recursive: true })
@@ -16,12 +16,12 @@ export default async function installPlugins() {
     await source.install(plugins.all)
   }
 
-  console.log()
-  console.log(chalk.green('Done downloading! Reconstructing plugins folder'))
+  output.blank()
+  output.info('Reconstructing plugins folder')
 
   await fs.cp('./managedPlugins', './plugins', { recursive: true, force: true })
   await fs.cp('./unmanagedPlugins', './plugins', { recursive: true, force: true })
 
-  console.log()
-  console.log(chalk.green('Done!'))
+  output.blank()
+  output.success('Installation complete!')
 }

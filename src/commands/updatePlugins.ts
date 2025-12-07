@@ -1,9 +1,9 @@
 import * as prompts from '@inquirer/prompts'
-import chalk from 'chalk'
 import fs from 'fs/promises'
 
 import { loadPlugins, Plugins, writePlugins } from '../pluginList.js'
 import { allPluginSources } from '../sources/pluginSource.js'
+import { output } from '../utils/output.js'
 import installPlugins from './installPlugins.js'
 
 export default async function updatePlugins(gameVersion?: string, featured?: boolean) {
@@ -36,23 +36,38 @@ export default async function updatePlugins(gameVersion?: string, featured?: boo
     changesVersions.push(...changed)
   }
 
-  let summary = ''
+  output.header('Changes')
+
   if (removedPlugins.length > 0) {
-    summary += `Removed plugins:
-${removedPlugins.map((p) => `  ${chalk.red(p)}`).join('\n')}`
+    output.minus(`Removed plugins (${removedPlugins.length}):`)
+    for (const p of removedPlugins) {
+      console.log(`  ${output.dim('•')} ${output.pluginName(p)}`)
+    }
+    output.blank()
   }
 
   if (addedPlugins.length > 0) {
-    summary += `Added plugins:
-${addedPlugins.map((p) => `  ${chalk.green(p)}`).join('\n')}`
+    output.plus(`Added plugins (${addedPlugins.length}):`)
+    for (const p of addedPlugins) {
+      console.log(`  ${output.dim('•')} ${output.pluginName(p)}`)
+    }
+    output.blank()
   }
 
   if (changesVersions.length > 0) {
-    summary += `Changes:
-${changesVersions.map((p) => `  ${chalk.yellow(`${p.identifier}: ${p.oldVersion} -> ${p.newVersion}'`)}`).join('\n')}`
+    output.update(`Version changes (${changesVersions.length}):`)
+    for (const p of changesVersions) {
+      console.log(
+        `  ${output.dim('•')} ${output.highlight(p.identifier)}: ${output.version(p.oldVersion)} → ${output.version(p.newVersion)}`,
+      )
+    }
+    output.blank()
   }
 
-  console.log(summary)
+  if (removedPlugins.length === 0 && addedPlugins.length === 0 && changesVersions.length === 0) {
+    output.info('No updates available')
+    return
+  }
 
   const contine = await prompts.confirm({
     message: 'Continue?',

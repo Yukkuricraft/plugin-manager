@@ -1,6 +1,7 @@
 import semver from 'semver'
 
 import { Plugins } from '../../pluginList.js'
+import { output } from '../../utils/output.js'
 import { formatDependencyInfo, getPluginVersion } from './utils.js'
 
 export default async function update(
@@ -17,7 +18,7 @@ export default async function update(
   const changes = []
   for (const id in existingPlugins.all.modrinth) {
     const plugin = existingPlugins.all.modrinth[id]
-    if (!plugin.slug || !(plugin.slug in existingPlugins.all.modrinth)) continue
+    if (!plugin.slug || !(`modrinth:${plugin.slug}` in existingPlugins.added)) continue
 
     const version = await getPluginVersion(id, {
       gameVersion,
@@ -108,9 +109,10 @@ export default async function update(
 
   for (const c of changes) {
     if (c.newVersion.dependencies.length > 0) {
-      console.log(
-        `${c.slug} has dependencies:\n${c.newVersion.dependencies.map((d) => '  ' + formatDependencyInfo(d, newPlugins, 2)).join('\n')}`,
-      )
+      output.dependency(`${output.pluginName(c.slug)} has dependencies:`)
+      for (const d of c.newVersion.dependencies) {
+        console.log(`  ${formatDependencyInfo(d, newPlugins, 2)}`)
+      }
     }
   }
 

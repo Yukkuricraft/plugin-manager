@@ -6,6 +6,7 @@ import { createReadStream } from 'node:fs'
 import type { components } from './modrinth.js'
 
 import { Plugins } from '../../pluginList.js'
+import { output, symbols } from '../../utils/output.js'
 import client from './client.js'
 
 export interface ExternalDependencyInfo {
@@ -141,23 +142,30 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
       return ''
     case 'external':
       if (info.filename === undefined) return ''
-      else return chalk.red(`Extenal plugin ${info.filename}. Make sure to note it somewhere safe`)
+      else
+        {return chalk.redBright(
+          `${symbols.warning} External plugin ${info.filename}. Make sure to note it somewhere safe`,
+        )}
     case 'incompatible': {
       const inPlugins = plugins.all.modrinth[info.projectId]
       if (inPlugins) {
         if (inPlugins.versionId === info.versionId) {
-          return chalk.red(
-            `Incompatible with plugin and version ${info.projectSlug}@${inPlugins.version}. Proceed with caution.`,
+          return chalk.redBright(
+            `${symbols.warning} Incompatible with plugin and version ${info.projectSlug}@${inPlugins.version}. Proceed with caution.`,
           )
         } else {
-          return chalk.red(`Incompatible with plugin ${info.projectSlug}. Proceed with caution.`)
+          return chalk.redBright(
+            `${symbols.warning} Incompatible with plugin ${info.projectSlug}. Proceed with caution.`,
+          )
         }
       } else {
         return ''
       }
     }
     case 'optional':
-      return chalk.blue(`Optional dependency on ${info.projectSlug}. Add seperately if you want to use this plugin`)
+      return chalk.cyanBright(
+        `${symbols.info} Optional dependency on ${info.projectSlug}. Add separately if you want to use this plugin`,
+      )
     case 'required': {
       const indentStr = ' '.repeat(indent + 2)
 
@@ -292,8 +300,8 @@ export async function getPluginVersion(
 
   const deps = projectVersion.dependencies ?? []
   if (deps.length !== 0 && displayFor) {
-    console.log(
-      chalk.blue(`Getting dependencies of ${displayFor} ${projectVersion.version_number ?? projectVersion.name}`),
+    output.info(
+      `Getting dependencies of ${output.pluginName(displayFor)} ${output.version(projectVersion.version_number ?? projectVersion.name ?? 'unknown')}`,
     )
   }
   const depInfos = await Promise.all(deps.map(getDependencyInfo))

@@ -1,6 +1,5 @@
-import chalk from 'chalk'
-
 import client from './client.js'
+import { output } from '../../utils/output.js'
 
 export default async function search(query: string) {
   const res = await client.GET('/search', {
@@ -15,18 +14,18 @@ export default async function search(query: string) {
     throw new Error('Failed to search plugins', { cause: res.error })
   }
   if (!res.data.hits.length) {
-    console.log(chalk.red('No projects found'))
+    output.error('No projects found')
   } else {
-    for (let i = 0; i < res.data.hits.length; i++) {
-      const project = res.data.hits[i]
-
-      console.log(`${chalk.green(project.title)}
-  Slug: ${chalk.blue(project.slug)}
-  Author: ${chalk.blue(project.author)}
-  Downloads: ${chalk.blue(project.downloads)}
-  Minecraft versions: ${chalk.blue(project.versions.join(','))}
-  Description: ${chalk.blue(project.description)}`)
-      if (i !== res.data.hits.length - 2) console.log()
+    for (const project of res.data.hits) {
+      output.pluginCard({
+        title: project.title,
+        slug: project.slug,
+        mcVersions: project.versions,
+        description: project.description,
+        author: project.author,
+        downloads: project.downloads,
+        categories: project.categories,
+      })
     }
   }
 }

@@ -1,6 +1,5 @@
-import chalk from 'chalk'
-
 import { ModrinthPlugin } from '../../pluginList.js'
+import { output } from '../../utils/output.js'
 import client from './client.js'
 
 export default async function viewPlugins(
@@ -23,17 +22,18 @@ export default async function viewPlugins(
   for (let i = 0; i < res.data.length; i++) {
     const project = res.data[i]
 
-    console.log(
-      chalk.blue(`${project.title}
-  Slug: ${project.slug}
-  Downloads: ${project.downloads}
-  Minecraft versions: ${project.game_versions?.join(',')}
-  Description: ${project.description}
-  Issues URL: ${project.issues_url}
-  Source URL: ${project.source_url}
-  Wiki URL: ${project.wiki_url}
-  Discord URL: ${project.discord_url}`),
-    )
-    if (!last || i !== plugins.length - 2) console.log()
+    output.pluginCard({
+      title: project.title,
+      slug: project.slug,
+      description: project.description,
+      downloads: project.downloads,
+      mcVersions: project.game_versions,
+      issuesUrl: project.issues_url ?? undefined,
+      sourceUrl: project.source_url ?? undefined,
+      wikiUrl: project.wiki_url ?? undefined,
+      discordUrl: project.discord_url ?? undefined,
+    })
+
+    if (!last || i !== plugins.length - 2) output.blank()
   }
 }
