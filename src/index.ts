@@ -75,7 +75,6 @@ await yargs()
       err instanceof RequestError ||
       err instanceof MissingDataError
     ) {
-      console.log('Got validation error')
       output.error(err.message)
     } else {
       console.error(yargs.help())
