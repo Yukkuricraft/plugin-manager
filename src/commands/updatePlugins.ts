@@ -69,10 +69,10 @@ export default async function updatePlugins(gameVersion?: string, featured?: boo
     return
   }
 
-  const contine = await prompts.confirm({
+  const accept = await prompts.confirm({
     message: 'Continue?',
   })
-  if (!contine) return
+  if (!accept) return
   await writePlugins(newPlugins)
   await fs.writeFile('changelog.md', changelogs.join('\n\n'), 'utf-8')
 

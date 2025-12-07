@@ -3,6 +3,7 @@ import semver from 'semver'
 import { Plugins } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
 import { formatDependencyInfo, getPluginVersion } from './utils.js'
+import { MissingDataError } from '../../errors.js'
 
 export default async function update(
   existingPlugins: Plugins,
@@ -29,7 +30,7 @@ export default async function update(
     })
 
     const versionIndicator = version.projectVersion.version_number ?? version.projectVersion.name
-    if (!versionIndicator) throw new Error(`Plugin ${id} has no version number or name`)
+    if (!versionIndicator) throw new MissingDataError(`Plugin ${id} has no version number or name`)
 
     const primaryFile = version.projectVersion.files.find((f) => f.primary) ?? version.projectVersion.files[0]
 
@@ -78,7 +79,15 @@ export default async function update(
     if (dep.type !== 'required') continue
 
     const existing = newPlugins.all.modrinth[dep.projectId]
-    if (existing?.version && dep.version && semver.compare(existing.version, dep.version) >= 0) {
+    const existingSemver = semver.coerce(existing?.version, {
+      includePrerelease: true,
+      rtl: true,
+    })
+    const newSemver = semver.coerce(dep.version, {
+      includePrerelease: true,
+      rtl: true,
+    })
+    if (existingSemver && newSemver && semver.compare(existingSemver, newSemver) >= 0) {
       existing.dependedOnBy.add(dependant)
       continue
     } else if (existing) {

@@ -28,5 +28,5 @@ file, and all installs will be validated against it.
 When you install plugins, three folders will be created:
 
 - `managedPlugins` where plugins automatically downloaded go
-- `unmanagePlugins` where you can put anything that not managed by the script. Configs go here.
-- `plugins` the contents of `managedPlugins` and `unmanagePlugins` merged into one folder.
+- `unmanagedPlugins` where you can put anything that not managed by the script. Configs go here.
+- `plugins` the contents of `managedPlugins` and `unmanagedPlugins` merged into one folder.

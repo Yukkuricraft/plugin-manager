@@ -15,10 +15,10 @@ export default async function addPlugins(pluginIndicators: string[], gameVersion
   }
   output.blank()
 
-  const contine = await prompts.confirm({
+  const accept = await prompts.confirm({
     message: 'Continue?',
   })
-  if (!contine) return
+  if (!accept) return
 
   await writePlugins(plugins)
   output.blank()

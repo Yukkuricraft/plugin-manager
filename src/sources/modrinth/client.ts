@@ -1,6 +1,7 @@
 import createClient, { type Middleware } from 'openapi-fetch'
 
 import type { paths } from './modrinth.js'
+import { RatelimitError } from '../../errors.js'
 
 const handleRatelimitMiddleware: () => Middleware = () => {
   let ratelimitLimit = 300
@@ -11,8 +12,8 @@ const handleRatelimitMiddleware: () => Middleware = () => {
   return {
     onRequest() {
       if (remainingRequests - requestsInFlight <= 0) {
-        const resetsIn = (Date.now() - ratelimitResets) / 1000
-        throw new Error(`Ratelimit hit, wait ${resetsIn} seconds before trying again`)
+        const resetsIn = (ratelimitResets - Date.now()) / 1000
+        throw new RatelimitError(`Ratelimit hit, wait ${resetsIn} seconds before trying again`)
       }
       requestsInFlight += 1
     },
@@ -27,6 +28,9 @@ const handleRatelimitMiddleware: () => Middleware = () => {
       getIntHeaderAnd('X-Ratelimit-Remaining', (remaining) => (remainingRequests = remaining))
       getIntHeaderAnd('X-Ratelimit-Reset', (resets) => (ratelimitResets = Date.now() + resets * 1000))
     },
+    onError() {
+      requestsInFlight -= 1
+    }
   }
 }
 

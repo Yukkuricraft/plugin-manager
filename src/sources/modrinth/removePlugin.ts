@@ -1,4 +1,5 @@
 import { AllModrinthPlugins, ModrinthPlugin, Plugin, Plugins } from '../../pluginList.js'
+import { SanityCheckError } from '../../errors.js'
 
 export default function removePlugin(plugins: Plugins, allToRemove: { plugin: Plugin; id: string }[]) {
   function categorizeOne(p: ModrinthPlugin, toRemoveIds: Set<string>, seen: Set<string>): 'clear' | 'remove' | 'keep' {
@@ -48,7 +49,7 @@ export default function removePlugin(plugins: Plugins, allToRemove: { plugin: Pl
             keep[id] = plugin
             break
           default:
-            throw new Error(`Unknown action ${action satisfies never}`)
+            throw new SanityCheckError(`Unknown action ${action satisfies never}`)
         }
       }
 

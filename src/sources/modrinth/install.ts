@@ -1,15 +1,12 @@
 import fs from 'fs/promises'
-import { createWriteStream } from 'node:fs'
-import { Readable } from 'node:stream'
-import { finished } from 'node:stream/promises'
-import { type ReadableStream } from 'node:stream/web'
 
 import type { components } from './modrinth.js'
 
 import { AllPlugins } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
 import client from './client.js'
-import { fileHash } from './utils.js'
+import { downloadFile, fileHash } from '../../utils/files.js'
+import { MissingDataError, RequestError, ValidationError } from '../../errors.js'
 
 export default async function install(plugins: AllPlugins): Promise<void> {
   const versionsRes = await client.GET('/versions', {
@@ -20,7 +17,7 @@ export default async function install(plugins: AllPlugins): Promise<void> {
     },
   })
   if (!versionsRes.data) {
-    throw new Error('Could not get versions', { cause: versionsRes.error })
+    throw new RequestError('Could not get versions', { cause: versionsRes.error })
   }
 
   const versions = versionsRes.data
@@ -31,13 +28,13 @@ export default async function install(plugins: AllPlugins): Promise<void> {
     const plugin = plugins.modrinth[id]
     const version = versions.find((v) => v.id === plugin.versionId)
     if (!version) {
-      throw new Error(`Version ${plugin.versionId} not found`)
+      throw new MissingDataError(`Version ${plugin.versionId} not found`)
     }
 
     const versionFile = version.files.find((f) => f.primary) ?? version.files[0]
 
     if (versionFile.hashes.sha512 !== plugin.sha512 && versionFile.hashes.sha1 !== plugin.sha1) {
-      throw new Error(`Plugin ${plugin.slug}@${plugin.version} has different hashes. Run update and try again`)
+      throw new ValidationError(`Plugin ${plugin.slug}@${plugin.version} has different hashes. Run update and try again`)
     }
 
     primaryFile[id] = versionFile
@@ -68,12 +65,12 @@ export default async function install(plugins: AllPlugins): Promise<void> {
       .filter((id) => !projectsToSkip.includes(id))
       .map(async (id) => {
         const file = primaryFile[id]
-        const res = await fetch(file.url)
-        if (!res.ok || !res.body) throw new Error(`Failed to download ${file.url}`)
-
-        const fileStream = createWriteStream(`./managedPlugins/${file.filename}`)
-        await finished(Readable.fromWeb(res.body as ReadableStream).pipe(fileStream))
-        output.file(file.filename, 'downloaded')
+        await downloadFile(file.url, {
+          id,
+          filename: file.filename,
+          sha512: file.hashes.sha512,
+          sha1: file.hashes.sha1,
+        })
       }),
   )
 }

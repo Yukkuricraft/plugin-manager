@@ -1,5 +1,6 @@
 import client from './client.js'
 import { output } from '../../utils/output.js'
+import { RequestError } from '../../errors.js'
 
 export default async function search(query: string) {
   const res = await client.GET('/search', {
@@ -11,7 +12,7 @@ export default async function search(query: string) {
     },
   })
   if (!res.data) {
-    throw new Error('Failed to search plugins', { cause: res.error })
+    throw new RequestError('Failed to search plugins', { cause: res.error })
   }
   if (!res.data.hits.length) {
     output.error('No projects found')

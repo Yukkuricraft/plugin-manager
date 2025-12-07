@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/require-await */
 import { PluginSource } from '../pluginSource.js'
 import { AllPlugins, Plugin, Plugins, UrlPlugin } from '../../pluginList.js'
-import { createWriteStream } from 'node:fs'
-import { finished } from 'node:stream/promises'
-import { Readable } from 'node:stream'
-import { ReadableStream } from 'node:stream/web'
-import contentDisposition from 'content-disposition'
 import { output } from '../../utils/output.js'
+import { downloadFile, validateUrl } from '../../utils/files.js'
+import { UserError, ValidationError } from '../../errors.js'
 
 const urlSource: PluginSource<UrlPlugin> = {
   prefix: 'url',
@@ -15,7 +12,7 @@ const urlSource: PluginSource<UrlPlugin> = {
     return plugin ? { plugin, id: query } : null
   },
   search(): Promise<void> {
-    throw new Error('Search is not possible for URLs')
+    throw new UserError('Search is not possible for URLs')
   },
   async viewPlugins(plugins: { plugin: UrlPlugin; id: string }[]): Promise<void> {
     for (const { plugin, id } of plugins) {
@@ -27,8 +24,10 @@ const urlSource: PluginSource<UrlPlugin> = {
   },
   async addPlugin(plugins: Plugins, pluginIndicator: string): Promise<void> {
     const parts = pluginIndicator.split('@')
-    if (parts.length !== 2) throw new Error('Invalid URL format')
+    if (parts.length !== 2) throw new ValidationError('Invalid URL format')
     const [id, url] = parts
+    validateUrl(url)
+
     plugins.added[`url:${id}`] = url
     plugins.all.url[id] = {
       source: 'url' as const,
@@ -49,20 +48,7 @@ const urlSource: PluginSource<UrlPlugin> = {
     }
   },
   async install(plugins: AllPlugins): Promise<void> {
-    await Promise.all(
-      Object.entries(plugins.url).map(async ([id, plugin]) => {
-        const url = plugin.url
-        const res = await fetch(url)
-        if (!res.ok || !res.body) throw new Error(`Failed to download ${url}`)
-        const filenameHeader = res.headers.get('Content-Disposition')
-        const contentDispositionData = filenameHeader === null ? null : contentDisposition.parse(filenameHeader)
-        const filename = contentDispositionData?.parameters?.filename ?? id
-
-        const fileStream = createWriteStream(`./managedPlugins/${filename}`)
-        await finished(Readable.fromWeb(res.body as ReadableStream).pipe(fileStream))
-        output.file(filename, 'downloaded')
-      }),
-    )
+    await Promise.all(Object.entries(plugins.url).map(([id, plugin]) => downloadFile(plugin.url, { id })))
   },
   removePlugin(plugins: Plugins, allToRemove: { plugin: Plugin; id: string }[]) {
     for (const { id } of allToRemove) {

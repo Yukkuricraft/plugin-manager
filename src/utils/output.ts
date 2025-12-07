@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import { SanityCheckError } from '../errors.js'
 
 export const symbols = {
   success: '✓',
@@ -80,7 +81,7 @@ export const output = {
         color = chalk.dim
         break
       default:
-        throw new Error(`Unknown type ${type satisfies never}`)
+        throw new SanityCheckError(`Unknown type ${type satisfies never}`)
     }
 
     console.log(color(`${symbol} ${symbols.file} ${message}`))

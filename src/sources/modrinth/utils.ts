@@ -1,13 +1,12 @@
 import * as prompts from '@inquirer/prompts'
 import chalk from 'chalk'
-import { createHash } from 'node:crypto'
-import { createReadStream } from 'node:fs'
 
 import type { components } from './modrinth.js'
 
 import { Plugins } from '../../pluginList.js'
 import { output, symbols } from '../../utils/output.js'
 import client from './client.js'
+import { MissingDataError, RequestError, SanityCheckError, UserError } from '../../errors.js'
 
 export interface ExternalDependencyInfo {
   type: 'external'
@@ -67,7 +66,7 @@ export async function getDependencyInfo(dep: components['schemas']['VersionDepen
     },
   })
   if (!projectRes.data) {
-    throw new Error('Failed to get dependency project', { cause: projectRes.error })
+    throw new RequestError('Failed to get dependency project', { cause: projectRes.error })
   }
 
   let version: components['schemas']['Version']
@@ -82,7 +81,7 @@ export async function getDependencyInfo(dep: components['schemas']['VersionDepen
       },
     })
     if (!versionRes.data) {
-      throw new Error('Failed to get dependency version', { cause: versionRes.error })
+      throw new RequestError('Failed to get dependency version', { cause: versionRes.error })
     }
     version = versionRes.data
   } else {
@@ -93,7 +92,7 @@ export async function getDependencyInfo(dep: components['schemas']['VersionDepen
 
   const versionIndicator = version.version_number ?? version.name
   if (!versionIndicator) {
-    throw new Error('Dependency version number or name not found')
+    throw new MissingDataError('Dependency version number or name not found')
   }
 
   const versionFile = version.files.find((f) => f.primary) ?? version.files[0]
@@ -132,7 +131,7 @@ export async function getDependencyInfo(dep: components['schemas']['VersionDepen
         ...baseReturn,
       }
     default:
-      throw new Error(`Unexpected dependency type ${dep.dependency_type satisfies never}`)
+      throw new SanityCheckError(`Unexpected dependency type ${dep.dependency_type satisfies never}`)
   }
 }
 
@@ -142,10 +141,11 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
       return ''
     case 'external':
       if (info.filename === undefined) return ''
-      else
-        {return chalk.redBright(
+      else {
+        return chalk.redBright(
           `${symbols.warning} External plugin ${info.filename}. Make sure to note it somewhere safe`,
-        )}
+        )
+      }
     case 'incompatible': {
       const inPlugins = plugins.all.modrinth[info.projectId]
       if (inPlugins) {
@@ -172,7 +172,7 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
       return `${info.projectSlug}:\n${info.dependencies.map((d) => indentStr + formatDependencyInfo(d, plugins, indent + 2)).join('\n')}`
     }
     default:
-      throw new Error(`Unexpected dependency type: ${info satisfies never}`)
+      throw new SanityCheckError(`Unexpected dependency type: ${info satisfies never}`)
   }
 }
 
@@ -233,7 +233,7 @@ export async function getPluginVersion(
     },
   })
   if (!versionsRes.data) {
-    throw new Error('Failed to get versions', { cause: versionsRes.error })
+    throw new RequestError('Failed to get versions', { cause: versionsRes.error })
   }
   const projectVersions = versionsRes.data
 
@@ -241,7 +241,7 @@ export async function getPluginVersion(
   if (targetVersion) {
     projectVersion = projectVersions.find((v) => v.version_number === targetVersion)
     if (!projectVersion) {
-      throw new Error(`Version ${targetVersion} not found for plugin ${displayFor}`)
+      throw new UserError(`Version ${targetVersion} not found for plugin ${displayFor}`)
     }
   } else {
     let lastReleaseVersion
@@ -268,7 +268,7 @@ export async function getPluginVersion(
 
             break
           default:
-            throw new Error('Unexpected version type')
+            throw new SanityCheckError('Unexpected version type')
         }
       }
     }
@@ -276,7 +276,7 @@ export async function getPluginVersion(
     const all = [lastReleaseVersion, lastBetaVersion, lastAlphaVersion].filter((v) => v !== undefined)
 
     if (all.length === 0) {
-      throw new Error('No versions found for plugin')
+      throw new MissingDataError('No versions found for plugin')
     } else if (all.length === 1) {
       projectVersion = all[0]
     } else if (fromDate && all.every((v) => v.date_published <= fromDate)) {
@@ -291,9 +291,13 @@ export async function getPluginVersion(
   }
 
   let changelogArr: [string, string][] | undefined
-  if (changelog) {
+  if (changelog && fromDate) {
     changelogArr = projectVersions
-      .filter((v) => v.date_published.localeCompare(projectVersion.date_published) > 0)
+      .filter(
+        (v) =>
+          v.date_published.localeCompare(fromDate) > 0 &&
+          v.date_published.localeCompare(projectVersion.date_published) <= 0,
+      )
       .map((v) => [v.name ?? v.version_number ?? v.id, v.changelog ?? ''] satisfies [string, string])
       .filter(([, changelog]) => changelog.length > 0)
   }
@@ -307,26 +311,4 @@ export async function getPluginVersion(
   const depInfos = await Promise.all(deps.map(getDependencyInfo))
 
   return { projectVersion, dependencies: depInfos, changelog: changelogArr }
-}
-
-export function fileHash(file: string) {
-  return new Promise<{ sha1: string; sha512: string }>((resolve, reject) => {
-    const sha1 = createHash('sha1')
-    const sha512 = createHash('sha512')
-    sha1.setEncoding('hex')
-    sha512.setEncoding('hex')
-
-    const stream = createReadStream(file)
-    stream.pipe(sha1)
-    stream.pipe(sha512)
-
-    stream.once('error', reject)
-
-    stream.once('end', () => {
-      resolve({
-        sha1: sha1.read() as string,
-        sha512: sha512.read() as string,
-      })
-    })
-  })
 }

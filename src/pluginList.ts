@@ -45,6 +45,7 @@ export const allPlugins = z.object({
 export type AllPlugins = z.infer<typeof allPlugins>
 
 export const plugins = z.object({
+  version: z.literal(1),
   added: z.record(z.templateLiteral([z.enum(['modrinth', 'url']), ':', z.string()]), z.string()),
   all: allPlugins,
 })
@@ -72,6 +73,7 @@ export async function loadPlugins(): Promise<Plugins> {
   } catch (e) {
     if (typeof e === 'object' && e && 'code' in e && e.code === 'ENOENT') {
       return {
+        version: 1,
         added: {},
         all: {
           modrinth: {},

@@ -1,6 +1,7 @@
 import { ModrinthPlugin } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
 import client from './client.js'
+import { RequestError } from '../../errors.js'
 
 export default async function viewPlugins(
   plugins: { plugin: ModrinthPlugin; id: string }[],
@@ -16,7 +17,7 @@ export default async function viewPlugins(
     },
   })
   if (!res.data) {
-    throw new Error('Failed to get projects', { cause: res.error })
+    throw new RequestError('Failed to get projects', { cause: res.error })
   }
 
   for (let i = 0; i < res.data.length; i++) {

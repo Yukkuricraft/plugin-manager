@@ -7,6 +7,8 @@ import removePlugins from './commands/removePlugins.js'
 import searchPlugins from './commands/searchPlugins.js'
 import updatePlugins from './commands/updatePlugins.js'
 import viewPlugins from './commands/viewPlugins.js'
+import { MissingDataError, RequestError, UserError, ValidationError } from './errors.js'
+import { output } from './utils/output.js'
 
 await yargs()
   .scriptName('plugins')
@@ -45,7 +47,12 @@ await yargs()
     'remove <plugin...>',
     'Remove plugins',
     (yargs) =>
-      yargs.positional('plugin', { type: 'string', describe: 'The plugin to remove', array: true, demandOption: true }),
+      yargs.positional('plugin', {
+        type: 'string',
+        describe: 'The plugin to remove',
+        array: true,
+        demandOption: true,
+      }),
     (argv) => removePlugins(argv.plugin),
   )
   .command('install', 'Install plugins', {}, () => installPlugins())
@@ -54,4 +61,16 @@ await yargs()
   .help()
   .recommendCommands()
   .version()
+  .fail((msg, err, yargs) => {
+    if (msg) {
+      console.error(msg)
+    }
+    if (err instanceof ValidationError || UserError || RequestError || MissingDataError) {
+      output.error(err.message)
+    } else {
+      console.error(yargs.help())
+      console.error(err)
+    }
+    process.exit(1)
+  })
   .parseAsync(hideBin(process.argv))

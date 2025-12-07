@@ -1,5 +1,6 @@
 import { loadPlugins, type Plugin } from '../pluginList.js'
 import { getPluginSource, PluginSource } from '../sources/pluginSource.js'
+import { SanityCheckError, UserError } from '../errors.js'
 
 export default async function viewPlugins(plugins: string[]) {
   const pluginsMap = await loadPlugins()
@@ -12,12 +13,12 @@ export default async function viewPlugins(plugins: string[]) {
 
   const notFoundPlugins = resolvedPlugins.filter(({ pluginWithId }) => pluginWithId === null)
   if (notFoundPlugins.length > 0) {
-    throw new Error(`Plugins ${notFoundPlugins.map(({ lookedFor }) => lookedFor).join(', ')} not found`)
+    throw new UserError(`Plugins ${notFoundPlugins.map(({ lookedFor }) => lookedFor).join(', ')} not found`)
   }
 
   const sources = new Map<PluginSource, { plugin: Plugin; id: string }[]>()
   resolvedPlugins.forEach(({ source, pluginWithId }) => {
-    if (pluginWithId === null) throw new Error('Plugin is null')
+    if (pluginWithId === null) throw new SanityCheckError('Plugin is null')
 
     const existing = sources.get(source) ?? []
     existing.push(pluginWithId)

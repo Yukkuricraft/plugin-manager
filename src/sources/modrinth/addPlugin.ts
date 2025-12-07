@@ -4,6 +4,7 @@ import { Plugins } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
 import client from './client.js'
 import { formatDependencyInfo, getPluginVersion } from './utils.js'
+import { MissingDataError, RequestError } from '../../errors.js'
 
 export default async function addPlugin(
   plugins: Plugins,
@@ -46,7 +47,7 @@ export default async function addPlugin(
     },
   })
   if (!projectRes.data) {
-    throw new Error('Failed to get project', { cause: projectRes.error })
+    throw new RequestError('Failed to get project', { cause: projectRes.error })
   }
   const project = projectRes.data
 
@@ -58,7 +59,7 @@ export default async function addPlugin(
   })
 
   if (!project.slug || !projectVersion.version_number) {
-    throw new Error('Project slug or version number not found')
+    throw new MissingDataError('Project slug or version number not found')
   }
 
   const existing = plugins.all.modrinth[project.id]
@@ -89,7 +90,15 @@ export default async function addPlugin(
     if (dep.type !== 'required') continue
 
     const existing = plugins.all.modrinth[dep.projectId]
-    if (existing?.version && dep.version && semver.compare(existing.version, dep.version) >= 0) {
+    const existingSemver = semver.coerce(existing?.version, {
+      includePrerelease: true,
+      rtl: true,
+    })
+    const newSemver = semver.coerce(dep.version, {
+      includePrerelease: true,
+      rtl: true,
+    })
+    if (existingSemver && newSemver && semver.compare(existingSemver, newSemver) >= 0) {
       existing.dependedOnBy.add(dependant)
       continue
     } else if (existing) {
