@@ -29,7 +29,8 @@ export default async function updatePlugins(gameVersion?: string, featured?: boo
       featured,
     )
 
-    changelogs.push(changelog)
+    if (changelog.length > 0) changelogs.push(changelog)
+
     removedPlugins.push(...removed)
     addedPlugins.push(...added)
     changesVersions.push(...changed)

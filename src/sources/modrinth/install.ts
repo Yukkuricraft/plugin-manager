@@ -45,9 +45,6 @@ export default async function install(plugins: AllPlugins): Promise<void> {
     if (versionFile.hashes.sha1) projectIdByHash[versionFile.hashes.sha1] = version.project_id
   }
 
-  await fs.rm('./plugins', { recursive: true, force: true })
-  await fs.mkdir('./managedPlugins', { recursive: true })
-  await fs.mkdir('./unmanagedPlugins', { recursive: true })
   let existingFiles = await fs.readdir('./managedPlugins')
 
   const projectsToSkip: string[] = []
@@ -78,10 +75,4 @@ export default async function install(plugins: AllPlugins): Promise<void> {
         console.log(chalk.green(`Downloaded ./managedPlugins/${file.filename}`))
       }),
   )
-
-  console.log()
-  console.log(chalk.green('Done downloading! Reconstructing plugins folder'))
-
-  await fs.cp('./managedPlugins', './plugins', { recursive: true, force: true })
-  await fs.cp('./unmanagedPlugins', './plugins', { recursive: true, force: true })
 }

@@ -13,7 +13,7 @@ const modrinthSource: PluginSource<ModrinthPlugin> = {
     for (const id in plugins.modrinth) {
       const plugin = plugins.modrinth[id]
 
-      if (plugin.source === 'modrinth' && plugin.slug?.toLowerCase()?.includes(query.toLowerCase())) {
+      if (plugin.slug?.toLowerCase()?.includes(query.toLowerCase())) {
         return { plugin, id }
       }
     }

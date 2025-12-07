@@ -1,5 +1,6 @@
 import { type AllPlugins, type Plugin as BasePlugin, Plugins } from '../pluginList.js'
 import modrinthSource from './modrinth/modrinthSource.js'
+import urlSource from './url/urlSource.js'
 
 export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   readonly prefix: 'modrinth' | 'url'
@@ -23,12 +24,12 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   addPlugin(plugins: Plugins, pluginIndicator: string, gameVersion?: string, featured?: boolean): Promise<void>
 }
 
-export const allPluginSources: PluginSource[] = [modrinthSource]
+export const allPluginSources: PluginSource[] = [modrinthSource, urlSource]
 
 export function getPluginSource(query: string): { source: PluginSource; strippedQuery: string } {
   const source = allPluginSources.find((s) => query.startsWith(s.prefix + ':'))
   if (source) {
-    return { source, strippedQuery: query.substring(source.prefix.length) }
+    return { source, strippedQuery: query.substring(source.prefix.length + 1) }
   } else {
     return { source: modrinthSource, strippedQuery: query }
   }
