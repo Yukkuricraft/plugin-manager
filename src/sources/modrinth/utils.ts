@@ -110,7 +110,7 @@ export async function getDependencyInfo(dep: components['schemas']['VersionDepen
   }
 
   switch (dep.dependency_type) {
-    case 'required':
+    case 'required': {
       const depInfo = version.dependencies ?? []
       const deps = dependencyInfo ?? (await Promise.all(depInfo.map(getDependencyInfo)))
 
@@ -119,6 +119,7 @@ export async function getDependencyInfo(dep: components['schemas']['VersionDepen
         dependencies: deps,
         ...baseReturn,
       }
+    }
     case 'optional':
       return {
         type: 'optional',
@@ -141,7 +142,7 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
     case 'external':
       if (info.filename === undefined) return ''
       else return chalk.red(`Extenal plugin ${info.filename}. Make sure to note it somewhere safe`)
-    case 'incompatible':
+    case 'incompatible': {
       const inPlugins = plugins.all.modrinth[info.projectId]
       if (inPlugins) {
         if (inPlugins.versionId === info.versionId) {
@@ -154,12 +155,14 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
       } else {
         return ''
       }
+    }
     case 'optional':
       return chalk.blue(`Optional dependency on ${info.projectSlug}. Add seperately if you want to use this plugin`)
-    case 'required':
+    case 'required': {
       const indentStr = ' '.repeat(indent + 2)
 
       return `${info.projectSlug}:\n${info.dependencies.map((d) => indentStr + formatDependencyInfo(d, plugins, indent + 2)).join('\n')}`
+    }
     default:
       throw new Error(`Unexpected dependency type: ${info satisfies never}`)
   }
@@ -217,7 +220,7 @@ export async function getPluginVersion(
       },
       query: {
         game_versions: gameVersion ? JSON.stringify([gameVersion]) : undefined,
-        featured: featured,
+        featured,
       },
     },
   })
@@ -239,7 +242,7 @@ export async function getPluginVersion(
 
     for (const projVersion of projectVersions) {
       if (projVersion.status === 'unlisted') continue
-      if (projVersion.loaders?.includes('paper'))
+      if (projVersion.loaders?.includes('paper')) {
         switch (projVersion.version_type) {
           case 'alpha':
             if (!lastAlphaVersion) lastAlphaVersion = projVersion
@@ -259,6 +262,7 @@ export async function getPluginVersion(
           default:
             throw new Error('Unexpected version type')
         }
+      }
     }
 
     const all = [lastReleaseVersion, lastBetaVersion, lastAlphaVersion].filter((v) => v !== undefined)
@@ -312,8 +316,8 @@ export function fileHash(file: string) {
 
     stream.once('end', () => {
       resolve({
-        sha1: sha1.read(),
-        sha512: sha512.read(),
+        sha1: sha1.read() as string,
+        sha512: sha512.read() as string,
       })
     })
   })

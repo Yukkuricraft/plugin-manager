@@ -3,6 +3,7 @@ import fs from 'fs/promises'
 import { createWriteStream } from 'node:fs'
 import { Readable } from 'node:stream'
 import { finished } from 'node:stream/promises'
+import { type ReadableStream } from 'node:stream/web'
 
 import type { components } from './modrinth.js'
 
@@ -45,7 +46,7 @@ export default async function install(plugins: AllPlugins): Promise<void> {
     if (versionFile.hashes.sha1) projectIdByHash[versionFile.hashes.sha1] = version.project_id
   }
 
-  let existingFiles = await fs.readdir('./managedPlugins')
+  const existingFiles = await fs.readdir('./managedPlugins')
 
   const projectsToSkip: string[] = []
 
@@ -71,7 +72,7 @@ export default async function install(plugins: AllPlugins): Promise<void> {
         if (!res.ok || !res.body) throw new Error(`Failed to download ${file.url}`)
 
         const fileStream = createWriteStream(`./managedPlugins/${file.filename}`)
-        await finished(Readable.fromWeb(res.body as any).pipe(fileStream))
+        await finished(Readable.fromWeb(res.body as ReadableStream).pipe(fileStream))
         console.log(chalk.green(`Downloaded ./managedPlugins/${file.filename}`))
       }),
   )

@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/require-await */
 import { PluginSource } from '../pluginSource.js'
 import { AllPlugins, Plugin, Plugins, UrlPlugin } from '../../pluginList.js'
 import { createWriteStream } from 'node:fs'
 import { finished } from 'node:stream/promises'
 import { Readable } from 'node:stream'
+import { ReadableStream } from 'node:stream/web'
 import chalk from 'chalk'
 import contentDisposition from 'content-disposition'
 
@@ -54,7 +56,7 @@ const urlSource: PluginSource<UrlPlugin> = {
         const filename = contentDispositionData?.parameters?.filename ?? id
 
         const fileStream = createWriteStream(`./managedPlugins/${filename}`)
-        await finished(Readable.fromWeb(res.body as any).pipe(fileStream))
+        await finished(Readable.fromWeb(res.body as ReadableStream).pipe(fileStream))
         console.log(chalk.green(`Downloaded ./managedPlugins/${filename}`))
       }),
     )

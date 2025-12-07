@@ -25,7 +25,8 @@ Options:
 Whenever you add, remove or update a plugin, the changes will be reflected in plugins.json. This file acts as your lock
 file, and all installs will be validated against it.
 
-When you install plugins, three folders will be created: 
+When you install plugins, three folders will be created:
+
 - `managedPlugins` where plugins automatically downloaded go
 - `unmanagePlugins` where you can put anything that not managed by the script. Configs go here.
 - `plugins` the contents of `managedPlugins` and `unmanagePlugins` merged into one folder.

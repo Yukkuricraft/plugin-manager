@@ -4,7 +4,11 @@
   "description": "",
   "scripts": {
     "generate-openapi": "yarn openapi-typescript https://docs.modrinth.com/openapi.yaml --output src/sources/modrinth/modrinth.ts",
-    "run-cli": "tsx ./src/index.ts"
+    "run-cli": "tsx ./src/index.ts",
+    "lint": "eslint",
+    "fixlint": "eslint --fix",
+    "format-check": "prettier --check \"**/*.(md|yaml|json|js|ts)\"",
+    "format": "prettier --write \"**/*.(md|yaml|json|js|ts)\""
   },
   "type": "module",
   "dependencies": {
@@ -21,10 +25,15 @@
     "@types/node": "^24.10.1",
     "@types/semver": "^7",
     "@types/yargs": "^17.0.35",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "jiti": "^2.6.1",
+    "neostandard": "^0.12.2",
     "openapi-typescript": "^7.10.1",
     "prettier": "^3.7.4",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.1"
   },
   "private": true,
   "packageManager": "yarn@4.12.0"

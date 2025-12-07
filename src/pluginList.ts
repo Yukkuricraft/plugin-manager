@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import fs from 'fs/promises'
 import z from 'zod'
 
@@ -66,10 +67,10 @@ function sortObj<A extends object>(obj: A): A {
 export async function loadPlugins(): Promise<Plugins> {
   try {
     const str = await fs.readFile('./plugins.json')
-    const raw = JSON.parse(str.toString())
+    const raw: z.input<typeof plugins> = JSON.parse(str.toString())
     return plugins.decode(raw)
   } catch (e) {
-    if ('code' in (e as any) && (e as any).code === 'ENOENT') {
+    if (typeof e === 'object' && e && 'code' in e && e.code === 'ENOENT') {
       return {
         added: {},
         all: {

@@ -11,8 +11,8 @@ export default async function addPlugin(
   gameVersion?: string,
   featured?: boolean,
 ) {
-  let plugin,
-    version = null
+  let plugin
+  let version = null
   if (pluginIndicator.includes('@')) {
     ;[plugin, version] = pluginIndicator.split('@')
   } else {
@@ -102,7 +102,7 @@ export default async function addPlugin(
       size: dep.size,
       filename: dep.filename,
       publishedAt: dep.publishedAt,
-      dependedOnBy: dependedOnBy,
+      dependedOnBy,
     }
 
     for (const depDep of dep.dependencies) {

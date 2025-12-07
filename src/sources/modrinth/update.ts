@@ -73,7 +73,7 @@ export default async function update(
     c.newVersion.dependencies.map((d) => ({ dep: d, dependant: c.newVersion.projectVersion.project_id })),
   )
 
-  for (let { dep, dependant } of depsToProcess) {
+  for (const { dep, dependant } of depsToProcess) {
     if (dep.type !== 'required') continue
 
     const existing = newPlugins.all.modrinth[dep.projectId]
@@ -97,7 +97,7 @@ export default async function update(
       size: dep.size,
       filename: dep.filename,
       publishedAt: dep.publishedAt,
-      dependedOnBy: dependedOnBy,
+      dependedOnBy,
     }
     newProjectIds.push(dep.projectId)
 
@@ -117,7 +117,7 @@ export default async function update(
   const removedPlugins = Object.entries(existingPlugins.all.modrinth).filter(([id]) => !newProjectIds.includes(id))
   const addedPlugins = newProjectIds
     .filter((p) => existingPlugins.all.modrinth[p] === undefined)
-    .map((p) => newPlugins.all.modrinth[p]!.slug ?? p)
+    .map((p) => newPlugins.all.modrinth[p].slug ?? p)
   const changedVersions = Object.entries(existingPlugins.all.modrinth)
     .filter(([id]) => newProjectIds.includes(id))
     .map(([id, oldPlugin]) => {
