@@ -136,4 +136,18 @@ export default async function addPlugin(
   }
 
   output.success(`Adding ${output.pluginName(project.title ?? plugin)}`)
+  output.pluginCard({
+    title: project.title,
+    slug: project.slug,
+    version: projectVersion.version_number,
+    versionType: projectVersion.version_type,
+    loaders: projectVersion.loaders ?? undefined,
+    mcVersions: projectVersion.game_versions ?? undefined,
+    filename: versionFile.filename,
+    size: versionFile.size,
+    publishedAt: projectVersion.date_published,
+    // The version page rather than the project page, so the exact build being downloaded is what
+    // gets confirmed
+    url: `https://modrinth.com/plugin/${project.slug}/version/${projectVersion.id}`,
+  })
 }

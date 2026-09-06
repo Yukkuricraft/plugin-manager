@@ -15,6 +15,19 @@ export const symbols = {
   skip: '⊘',
 }
 
+const sizeUnits = ['B', 'KiB', 'MiB', 'GiB']
+
+function formatSize(bytes: number) {
+  let size = bytes
+  let unit = 0
+  while (size >= 1024 && unit < sizeUnits.length - 1) {
+    size /= 1024
+    unit++
+  }
+
+  return `${size.toFixed(unit === 0 ? 0 : 1)} ${sizeUnits[unit]}`
+}
+
 export const output = {
   success(message: string) {
     console.log(chalk.bold.greenBright(`${symbols.success} ${message}`))
@@ -56,6 +69,11 @@ export const output = {
     return chalk.yellowBright(version)
   },
 
+  versionType(versionType: string) {
+    const color = versionType === 'release' ? chalk.greenBright : chalk.bold.yellowBright
+    return color(`(${versionType})`)
+  },
+
   label(label: string) {
     return chalk.dim.cyan(`${label}:`)
   },
@@ -95,6 +113,11 @@ export const output = {
     author?: string
     downloads?: number
     version?: string
+    versionType?: string
+    loaders?: string[]
+    filename?: string
+    size?: number
+    publishedAt?: string
     mcVersions?: string[]
     categories?: string[]
     dependencies?: string[]
@@ -110,9 +133,6 @@ export const output = {
     if (data.slug) {
       console.log(`   ${this.label('Slug')} ${this.highlight(data.slug)}`)
     }
-    if (data.url) {
-      console.log(`  ${this.label('URL')} ${this.url(data.url)}`)
-    }
     if (data.author) {
       console.log(`   ${this.label('Author')} ${chalk.white(data.author)}`)
     }
@@ -120,16 +140,30 @@ export const output = {
       console.log(`   ${this.label('Downloads')} ${this.version(data.downloads.toLocaleString())}`)
     }
     if (data.version) {
-      console.log(`   ${this.label('Version')} ${this.version(data.version)}`)
+      const versionType = data.versionType ? ` ${this.versionType(data.versionType)}` : ''
+      console.log(`   ${this.label('Version')} ${this.version(data.version)}${versionType}`)
+    }
+    if (data.loaders && data.loaders.length > 0) {
+      console.log(`   ${this.label('Loader')} ${chalk.blueBright(data.loaders.join(', '))}`)
     }
     if (data.mcVersions) {
       console.log(`   ${output.label('MC Versions')} ${chalk.dim.yellowBright(data.mcVersions.join(', ') ?? 'N/A')}`)
+    }
+    if (data.filename) {
+      const size = data.size === undefined ? '' : ` ${this.dim(`(${formatSize(data.size)})`)}`
+      console.log(`   ${this.label('File')} ${chalk.white(data.filename)}${size}`)
+    }
+    if (data.publishedAt) {
+      console.log(`   ${this.label('Published')} ${chalk.white(new Date(data.publishedAt).toISOString().slice(0, 10))}`)
     }
     if (data.categories && data.categories.length > 0) {
       console.log(`   ${this.label('Categories')} ${chalk.magenta(data.categories.join(', '))}`)
     }
     if (data.dependencies && data.dependencies.length > 0) {
       console.log(`   ${this.label('Dependencies')} ${chalk.magentaBright(data.dependencies.join(', '))}`)
+    }
+    if (data.url) {
+      console.log(`   ${this.label('URL')} ${this.url(data.url)}`)
     }
     if (data.issuesUrl) {
       console.log(`   ${output.label('Issues')} ${this.url(data.issuesUrl)}`)
