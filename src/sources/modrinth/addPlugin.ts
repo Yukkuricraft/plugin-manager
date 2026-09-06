@@ -3,12 +3,14 @@ import semver from 'semver'
 import { Plugins } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
 import client from './client.js'
+import { type Loader } from './loaders.js'
 import { formatDependencyInfo, getPluginVersion } from './utils.js'
 import { MissingDataError, RequestError } from '../../errors.js'
 
 export default async function addPlugin(
   plugins: Plugins,
   pluginIndicator: string,
+  loader: Loader,
   gameVersion?: string,
   featured?: boolean,
 ) {
@@ -51,7 +53,7 @@ export default async function addPlugin(
   }
   const project = projectRes.data
 
-  const { projectVersion, dependencies: depInfos } = await getPluginVersion(project.id, {
+  const { projectVersion, dependencies: depInfos } = await getPluginVersion(project.id, loader, {
     targetVersion: version ?? undefined,
     displayFor: plugin,
     gameVersion,

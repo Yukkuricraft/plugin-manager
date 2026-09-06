@@ -1,4 +1,5 @@
 import { type AllPlugins, type Plugin as BasePlugin, Plugins } from '../pluginList.js'
+import { type Loader } from './modrinth/loaders.js'
 import modrinthSource from './modrinth/modrinthSource.js'
 import urlSource from './url/urlSource.js'
 
@@ -13,6 +14,7 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   update(
     existingPlugins: Plugins,
     newPlugins: Plugins,
+    loader: Loader,
     gameVersion?: string,
     featured?: boolean,
   ): Promise<{
@@ -21,7 +23,13 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
     added: string[]
     changed: { identifier: string; oldVersion: string; newVersion: string }[]
   }>
-  addPlugin(plugins: Plugins, pluginIndicator: string, gameVersion?: string, featured?: boolean): Promise<void>
+  addPlugin(
+    plugins: Plugins,
+    pluginIndicator: string,
+    loader: Loader,
+    gameVersion?: string,
+    featured?: boolean,
+  ): Promise<void>
 }
 
 export const allPluginSources: PluginSource[] = [modrinthSource, urlSource]

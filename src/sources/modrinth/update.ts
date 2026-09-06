@@ -2,12 +2,14 @@ import semver from 'semver'
 
 import { Plugins } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
+import { type Loader } from './loaders.js'
 import { formatDependencyInfo, getPluginVersion } from './utils.js'
 import { MissingDataError } from '../../errors.js'
 
 export default async function update(
   existingPlugins: Plugins,
   newPlugins: Plugins,
+  loader: Loader,
   gameVersion?: string,
   featured?: boolean,
 ): Promise<{
@@ -21,7 +23,7 @@ export default async function update(
     const plugin = existingPlugins.all.modrinth[id]
     if (!plugin.slug || !(`modrinth:${plugin.slug}` in existingPlugins.added)) continue
 
-    const version = await getPluginVersion(id, {
+    const version = await getPluginVersion(id, loader, {
       gameVersion,
       featured,
       displayFor: plugin.slug,

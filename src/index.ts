@@ -8,6 +8,7 @@ import searchPlugins from './commands/searchPlugins.js'
 import updatePlugins from './commands/updatePlugins.js'
 import viewPlugins from './commands/viewPlugins.js'
 import { MissingDataError, RequestError, UserError, ValidationError } from './errors.js'
+import { desiredLoader } from './sources/modrinth/loaders.js'
 import { output } from './utils/output.js'
 
 const pluginSourceDescription =
@@ -35,7 +36,7 @@ await yargs()
         array: true,
         demandOption: true,
       }),
-    (argv) => addPlugins(argv.plugin),
+    (argv) => addPlugins(argv.plugin, desiredLoader),
   )
   .command(
     'view <plugin..>',
@@ -62,7 +63,7 @@ await yargs()
     (argv) => removePlugins(argv.plugin),
   )
   .command('install', 'Install plugins', {}, () => installPlugins())
-  .command('update', 'Update plugins', {}, () => updatePlugins())
+  .command('update', 'Update plugins', {}, () => updatePlugins(desiredLoader))
   .completion()
   .help()
   .recommendCommands()
