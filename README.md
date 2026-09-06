@@ -20,6 +20,17 @@ Options:
   --version  Show version number                                       [boolean]
 ```
 
+### Pinning a version
+
+When adding a Modrinth plugin, you can pin it to a specific version with `<plugin>@<version>`. The version must exactly
+match the Modrinth version number. Without it, the latest matching version is resolved.
+
+```
+yarn run-cli add fastasyncworldedit@2.15.1
+```
+
+Note that `update` does not currently preserve a pin, and will move the plugin back to the latest version.
+
 ## How it works
 
 Whenever you add, remove or update a plugin, the changes will be reflected in plugins.json. This file acts as your lock

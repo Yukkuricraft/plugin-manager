@@ -13,6 +13,8 @@ import { output } from './utils/output.js'
 const pluginSourceDescription =
   'By default, Modrinth is used as a plugin source. This can be made explicit by prefixing the plugin with "modrinth:". You can also prefix the plugin with "url:" to use a URLs instead.'
 const urlSyntaxDescription = 'When adding a plugin from an URL, the correct syntax is "url:<identifier>@<url>"'
+const versionSyntaxDescription =
+  'To pin a Modrinth plugin to a specific version, use "<plugin>@<version>". The version must exactly match the Modrinth version number. If omitted, the latest matching version is resolved.'
 
 await yargs()
   .scriptName('plugins')
@@ -29,7 +31,7 @@ await yargs()
     (yargs) =>
       yargs.positional('plugin', {
         type: 'string',
-        describe: `Plugin to add. Must be Modrinth slug or id. ${pluginSourceDescription} ${urlSyntaxDescription}`,
+        describe: `Plugin to add. Must be Modrinth slug or id. ${pluginSourceDescription} ${urlSyntaxDescription} ${versionSyntaxDescription}`,
         array: true,
         demandOption: true,
       }),
