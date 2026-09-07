@@ -14,6 +14,8 @@ import { output } from './utils/output.js'
 const pluginSourceDescription =
   'By default, Modrinth is used as a plugin source. This can be made explicit by prefixing the plugin with "modrinth:". You can also prefix the plugin with "url:" to use a URLs instead.'
 const urlSyntaxDescription = 'When adding a plugin from an URL, the correct syntax is "url:<identifier>@<url>"'
+const gameVersionDescription =
+  'Only consider plugin versions supporting this Minecraft version, e.g. "1.21.1". Without it, the newest version is used whichever Minecraft versions it supports. Applies to dependencies too.'
 const versionSyntaxDescription =
   'To pin a Modrinth plugin to a specific version, use "<plugin>@<version>". The version must exactly match the Modrinth version number. If omitted, the latest matching version is resolved.'
 
@@ -30,13 +32,19 @@ await yargs()
     'add <plugin..>',
     'Add plugins',
     (yargs) =>
-      yargs.positional('plugin', {
-        type: 'string',
-        describe: `Plugin to add. Must be Modrinth slug or id. ${pluginSourceDescription} ${urlSyntaxDescription} ${versionSyntaxDescription}`,
-        array: true,
-        demandOption: true,
-      }),
-    (argv) => addPlugins(argv.plugin, desiredLoader),
+      yargs
+        .positional('plugin', {
+          type: 'string',
+          describe: `Plugin to add. Must be Modrinth slug or id. ${pluginSourceDescription} ${urlSyntaxDescription} ${versionSyntaxDescription}`,
+          array: true,
+          demandOption: true,
+        })
+        .option('game-version', {
+          type: 'string',
+          alias: 'mc-version',
+          describe: gameVersionDescription,
+        }),
+    (argv) => addPlugins(argv.plugin, desiredLoader, argv.gameVersion),
   )
   .command(
     'view <plugin..>',
@@ -63,7 +71,17 @@ await yargs()
     (argv) => removePlugins(argv.plugin),
   )
   .command('install', 'Install plugins', {}, () => installPlugins())
-  .command('update', 'Update plugins', {}, () => updatePlugins(desiredLoader))
+  .command(
+    'update',
+    'Update plugins',
+    (yargs) =>
+      yargs.option('game-version', {
+        type: 'string',
+        alias: 'mc-version',
+        describe: gameVersionDescription,
+      }),
+    (argv) => updatePlugins(desiredLoader, argv.gameVersion),
+  )
   .completion()
   .help()
   .recommendCommands()

@@ -48,6 +48,7 @@ export type DependencyInfo =
 export async function getDependencyInfo(
   dep: components['schemas']['VersionDependency'],
   loader: Loader,
+  gameVersion?: string,
 ): Promise<DependencyInfo> {
   if (dep.dependency_type === 'embedded') {
     return {
@@ -89,7 +90,7 @@ export async function getDependencyInfo(
     }
     version = versionRes.data
   } else {
-    const ver = await getPluginVersion(dep.project_id, loader)
+    const ver = await getPluginVersion(dep.project_id, loader, { gameVersion })
     version = ver.projectVersion
     dependencyInfo = ver.dependencies
   }
@@ -116,7 +117,7 @@ export async function getDependencyInfo(
   switch (dep.dependency_type) {
     case 'required': {
       const depInfo = version.dependencies ?? []
-      const deps = dependencyInfo ?? (await Promise.all(depInfo.map((d) => getDependencyInfo(d, loader))))
+      const deps = dependencyInfo ?? (await Promise.all(depInfo.map((d) => getDependencyInfo(d, loader, gameVersion))))
 
       return {
         type: 'required',
@@ -243,12 +244,13 @@ export async function getPluginVersion(
     throw new RequestError('Failed to get versions', { cause: versionsRes.error })
   }
   const projectVersions = versionsRes.data
+  const supportingGameVersion = gameVersion ? ` supporting Minecraft ${gameVersion}` : ''
 
   let projectVersion: components['schemas']['Version'] | undefined
   if (targetVersion) {
     const matchingVersion = projectVersions.filter((v) => v.version_number === targetVersion)
     if (matchingVersion.length === 0) {
-      throw new UserError(`Version ${targetVersion} not found for plugin ${displayFor}`)
+      throw new UserError(`Version ${targetVersion} not found for plugin ${displayFor}${supportingGameVersion}`)
     }
 
     // Resolve the loader within the requested version rather than across the whole project, so an
@@ -295,7 +297,9 @@ export async function getPluginVersion(
     const all = [lastReleaseVersion, lastBetaVersion, lastAlphaVersion].filter((v) => v !== undefined)
 
     if (all.length === 0) {
-      throw new MissingDataError('No versions found for plugin')
+      throw new MissingDataError(
+        `No ${loader} versions found for plugin ${displayFor ?? projectId}${supportingGameVersion}`,
+      )
     } else if (all.length === 1) {
       projectVersion = all[0]
     } else if (fromDate && all.every((v) => v.date_published <= fromDate)) {
@@ -327,7 +331,7 @@ export async function getPluginVersion(
       `Getting dependencies of ${output.pluginName(displayFor)} ${output.version(projectVersion.version_number ?? projectVersion.name ?? 'unknown')}`,
     )
   }
-  const depInfos = await Promise.all(deps.map((d) => getDependencyInfo(d, loader)))
+  const depInfos = await Promise.all(deps.map((d) => getDependencyInfo(d, loader, gameVersion)))
 
   return { projectVersion, dependencies: depInfos, changelog: changelogArr }
 }

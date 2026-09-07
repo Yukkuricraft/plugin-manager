@@ -31,6 +31,20 @@ yarn run-cli add fastasyncworldedit@2.15.1
 
 Note that `update` does not currently preserve a pin, and will move the plugin back to the latest version.
 
+### Targeting a Minecraft version
+
+Pass `--game-version` (or `--mc-version`) to `add` or `update` to only consider plugin versions supporting that
+Minecraft version. Dependencies are resolved against it too, so a plugin is never paired with a dependency built for a
+different Minecraft version.
+
+```
+yarn run-cli add fastasyncworldedit --game-version 1.21.1
+yarn run-cli update --game-version 1.21.1
+```
+
+Like a version pin, this is not remembered. It has to be passed on every `add` and `update`, or the next `update` will
+move plugins to whatever is newest regardless of the Minecraft version it supports.
+
 ## How it works
 
 Whenever you add, remove or update a plugin, the changes will be reflected in plugins.json. This file acts as your lock
