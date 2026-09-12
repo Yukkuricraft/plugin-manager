@@ -4,6 +4,7 @@ import { AllPlugins, ModrinthPlugin } from '../../pluginList.js'
 import { type PluginSource } from '../pluginSource.js'
 import addPlugin from './addPlugin.js'
 import install from './install.js'
+import listEntries from './listEntries.js'
 import removePlugin from './removePlugin.js'
 import search from './search.js'
 import update from './update.js'
@@ -32,6 +33,7 @@ const modrinthSource: PluginSource<ModrinthPlugin> = {
   },
   search,
   viewPlugins,
+  listEntries,
   addPlugin,
   update,
   install,

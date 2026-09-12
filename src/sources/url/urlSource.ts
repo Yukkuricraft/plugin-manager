@@ -4,6 +4,7 @@ import { AllPlugins, Plugin, Plugins, UrlPlugin } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
 import { downloadFile, validateUrl } from '../../utils/files.js'
 import { UserError, ValidationError } from '../../errors.js'
+import UrlPluginEntry from './urlPluginEntry.js'
 
 const urlSource: PluginSource<UrlPlugin> = {
   prefix: 'url',
@@ -21,6 +22,9 @@ const urlSource: PluginSource<UrlPlugin> = {
         url: plugin.url,
       })
     }
+  },
+  listEntries(plugins: Plugins): UrlPluginEntry[] {
+    return Object.entries(plugins.all.url).map(([id, plugin]) => new UrlPluginEntry(id, plugin.url))
   },
   async addPlugin(plugins: Plugins, pluginIndicator: string): Promise<boolean> {
     const parts = pluginIndicator.split('@')

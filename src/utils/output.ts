@@ -28,6 +28,11 @@ export function formatSize(bytes: number) {
   return `${size.toFixed(unit === 0 ? 0 : 1)} ${sizeUnits[unit]}`
 }
 
+/** Formats an ISO timestamp as YYYY-MM-DD */
+export function formatDate(iso: string) {
+  return new Date(iso).toISOString().slice(0, 10)
+}
+
 export const output = {
   success(message: string) {
     console.log(chalk.bold.greenBright(`${symbols.success} ${message}`))
@@ -155,7 +160,7 @@ export const output = {
       console.log(`   ${this.label('File')} ${chalk.white(data.filename)}${size}`)
     }
     if (data.publishedAt) {
-      console.log(`   ${this.label('Published')} ${chalk.white(new Date(data.publishedAt).toISOString().slice(0, 10))}`)
+      console.log(`   ${this.label('Published')} ${chalk.white(formatDate(data.publishedAt))}`)
     }
     if (data.categories && data.categories.length > 0) {
       console.log(`   ${this.label('Categories')} ${chalk.magenta(data.categories.join(', '))}`)

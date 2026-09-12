@@ -1,6 +1,7 @@
 import { type AllPlugins, type Plugin as BasePlugin, Plugins } from '../pluginList.js'
 import { type Loader } from './modrinth/loaders.js'
 import modrinthSource from './modrinth/modrinthSource.js'
+import { type PluginEntry } from './pluginEntry.js'
 import urlSource from './url/urlSource.js'
 
 export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
@@ -9,6 +10,8 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   search(query: string, loader: Loader, gameVersion?: string): Promise<void>
   findPlugin(query: string, plugins: AllPlugins): Promise<{ plugin: Plugin; id: string } | null>
   viewPlugins(plugins: { plugin: Plugin; id: string }[], last: boolean): Promise<void>
+  /** This source's plugins in `plugins`, for listing */
+  listEntries(plugins: Plugins): PluginEntry[]
   removePlugin(plugins: Plugins, allToRemove: { plugin: BasePlugin; id: string }[]): void
   install(plugins: AllPlugins): Promise<void>
   update(
