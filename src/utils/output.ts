@@ -17,7 +17,7 @@ export const symbols = {
 
 const sizeUnits = ['B', 'KiB', 'MiB', 'GiB']
 
-function formatSize(bytes: number) {
+export function formatSize(bytes: number) {
   let size = bytes
   let unit = 0
   while (size >= 1024 && unit < sizeUnits.length - 1) {
@@ -121,6 +121,7 @@ export const output = {
     mcVersions?: string[]
     categories?: string[]
     dependencies?: string[]
+    requiredBy?: string[]
     issuesUrl?: string
     sourceUrl?: string
     wikiUrl?: string
@@ -161,6 +162,9 @@ export const output = {
     }
     if (data.dependencies && data.dependencies.length > 0) {
       console.log(`   ${this.label('Dependencies')} ${chalk.magentaBright(data.dependencies.join(', '))}`)
+    }
+    if (data.requiredBy && data.requiredBy.length > 0) {
+      console.log(`   ${this.label('Required by')} ${chalk.magentaBright(data.requiredBy.join(', '))}`)
     }
     if (data.url) {
       console.log(`   ${this.label('URL')} ${this.url(data.url)}`)

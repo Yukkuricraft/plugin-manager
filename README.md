@@ -10,6 +10,7 @@ Commands:
   plugins search <plugin>     Search for plugins
   plugins add <plugin...>     Add plugins
   plugins view <plugin...>    View information about existing plugins
+  plugins show                Show a summary of all plugins in plugins.json
   plugins remove <plugin...>  Remove plugins
   plugins install             Install plugins
   plugins update              Update plugins
@@ -34,8 +35,7 @@ Note that `update` does not currently preserve a pin, and will move the plugin b
 ### Targeting a Minecraft version
 
 Pass `--game-version` (or `--mc-version`) to `add` or `update` to only consider plugin versions supporting that
-Minecraft version. Dependencies are resolved against it too, so a plugin is never paired with a dependency built for a
-different Minecraft version.
+Minecraft version.
 
 ```
 yarn run-cli add fastasyncworldedit --game-version 1.21.1

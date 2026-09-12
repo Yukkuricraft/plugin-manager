@@ -5,6 +5,7 @@ import addPlugins from './commands/addPlugins.js'
 import installPlugins from './commands/installPlugins.js'
 import removePlugins from './commands/removePlugins.js'
 import searchPlugins from './commands/searchPlugins.js'
+import showPlugins from './commands/showPlugins.js'
 import updatePlugins from './commands/updatePlugins.js'
 import viewPlugins from './commands/viewPlugins.js'
 import { MissingDataError, RequestError, UserError, ValidationError } from './errors.js'
@@ -57,6 +58,18 @@ await yargs()
         array: true,
       }),
     (argv) => viewPlugins(argv.plugin),
+  )
+  .command(
+    'show',
+    'Show a summary of all plugins in plugins.json',
+    (yargs) =>
+      yargs.option('verbose', {
+        type: 'boolean',
+        alias: 'v',
+        describe: 'Show full details for each plugin',
+        default: false,
+      }),
+    (argv) => showPlugins(argv.verbose),
   )
   .command(
     'remove <plugin..>',
