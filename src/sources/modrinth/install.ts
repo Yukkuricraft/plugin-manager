@@ -34,7 +34,9 @@ export default async function install(plugins: AllPlugins): Promise<void> {
     const versionFile = version.files.find((f) => f.primary) ?? version.files[0]
 
     if (versionFile.hashes.sha512 !== plugin.sha512 && versionFile.hashes.sha1 !== plugin.sha1) {
-      throw new ValidationError(`Plugin ${plugin.slug}@${plugin.version} has different hashes. Run update and try again`)
+      throw new ValidationError(
+        `Plugin ${plugin.slug}@${plugin.version} has different hashes. Run update and try again`,
+      )
     }
 
     primaryFile[id] = versionFile

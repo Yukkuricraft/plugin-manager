@@ -30,7 +30,7 @@ const handleRatelimitMiddleware: () => Middleware = () => {
     },
     onError() {
       requestsInFlight -= 1
-    }
+    },
   }
 }
 

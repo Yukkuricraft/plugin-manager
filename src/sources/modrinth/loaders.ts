@@ -1,10 +1,10 @@
 /**
  * The loader versions are resolved for, read once in index.ts and passed down from there.
  *
- * Hardcoded for now, so this is the only place Paper is assumed. Making it user-selectable is a
- * matter of taking the value off argv there instead.
+ * Hardcoded for add and update, so this is the only place Paper is assumed. Search takes it as the
+ * default for --loader, and the other commands could take their value off argv the same way.
  */
-export const desiredLoader = 'paper' satisfies Loader
+export const desiredLoader: Loader = 'paper'
 
 /**
  * For each loader Modrinth tags plugins with, the loader it inherits plugins from, or null if it
@@ -28,6 +28,8 @@ const loaderParent = {
 } as const satisfies Record<string, string | null>
 
 export type Loader = keyof typeof loaderParent
+
+export const allLoaders = Object.keys(loaderParent) as Loader[]
 
 interface LoaderTagged {
   loaders?: string[] | null

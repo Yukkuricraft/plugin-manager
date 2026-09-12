@@ -9,7 +9,7 @@ import showPlugins from './commands/showPlugins.js'
 import updatePlugins from './commands/updatePlugins.js'
 import viewPlugins from './commands/viewPlugins.js'
 import { MissingDataError, RequestError, UserError, ValidationError } from './errors.js'
-import { desiredLoader } from './sources/modrinth/loaders.js'
+import { allLoaders, desiredLoader } from './sources/modrinth/loaders.js'
 import { output } from './utils/output.js'
 
 const pluginSourceDescription =
@@ -26,8 +26,21 @@ await yargs()
   .command(
     'search <plugin>',
     'Search for plugins',
-    (yargs) => yargs.positional('plugin', { type: 'string', describe: 'Query to search with', demandOption: true }),
-    (argv) => searchPlugins(argv.plugin),
+    (yargs) =>
+      yargs
+        .positional('plugin', { type: 'string', describe: 'Query to search with', demandOption: true })
+        .option('loader', {
+          choices: allLoaders,
+          default: desiredLoader,
+          describe:
+            'Only show plugins that run on this loader, including those built for a loader it is compatible with',
+        })
+        .option('game-version', {
+          type: 'string',
+          alias: 'mc-version',
+          describe: 'Only show plugins with a version supporting this Minecraft version, e.g. "1.21.1"',
+        }),
+    (argv) => searchPlugins(argv.plugin, argv.loader, argv.gameVersion),
   )
   .command(
     'add <plugin..>',
