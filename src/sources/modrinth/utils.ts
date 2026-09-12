@@ -236,7 +236,8 @@ export async function getPluginVersion(
       },
       query: {
         game_versions: gameVersion ? JSON.stringify([gameVersion]) : undefined,
-        featured,
+        // Modrinth treats featured=false as "only non-featured versions", so false means no filter instead
+        featured: featured || undefined,
       },
     },
   })

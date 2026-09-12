@@ -22,17 +22,23 @@ const urlSource: PluginSource<UrlPlugin> = {
       })
     }
   },
-  async addPlugin(plugins: Plugins, pluginIndicator: string): Promise<void> {
+  async addPlugin(plugins: Plugins, pluginIndicator: string): Promise<boolean> {
     const parts = pluginIndicator.split('@')
     if (parts.length !== 2) throw new ValidationError('Invalid URL format')
     const [id, url] = parts
     validateUrl(url)
+
+    if (plugins.added[`url:${id}`] === url) {
+      output.info(`Plugin ${output.pluginName(id)} already in added list with the specified URL. Exiting early`)
+      return false
+    }
 
     plugins.added[`url:${id}`] = url
     plugins.all.url[id] = {
       source: 'url' as const,
       url,
     }
+    return true
   },
   async update(
     existingPlugins: Plugins,

@@ -14,12 +14,16 @@ export default async function addPlugins(
 ) {
   const plugins = await loadPlugins()
 
+  let changed = false
   for (const pluginIndicator of pluginIndicators) {
     const { source, strippedQuery } = getPluginSource(pluginIndicator)
     // Explicitly not parallel
-    await source.addPlugin(plugins, strippedQuery, loader, gameVersion, featured)
+    if (await source.addPlugin(plugins, strippedQuery, loader, gameVersion, featured)) changed = true
   }
   output.blank()
+
+  // Every plugin was already added as asked, so there's nothing to confirm, write or install
+  if (!changed) return
 
   const accept = await prompts.confirm({
     message: 'Continue?',

@@ -102,7 +102,7 @@ export default async function update(
     newPlugins.all.modrinth[dep.projectId] = {
       source: 'modrinth' as const,
       slug: dep.projectSlug ?? null,
-      version: dep.version ?? null,
+      version: dep.version,
       versionId: dep.versionId,
       sha512: dep.sha512,
       sha1: dep.sha1,

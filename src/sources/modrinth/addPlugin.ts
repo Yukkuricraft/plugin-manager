@@ -32,7 +32,7 @@ export default async function addPlugin(
         output.info(
           `Plugin ${output.pluginName(plugin)} already in added list with the specified version. Exiting early`,
         )
-        return
+        return false
       }
     } else {
       output.info(
@@ -113,7 +113,7 @@ export default async function addPlugin(
     plugins.all.modrinth[dep.projectId] = {
       source: 'modrinth',
       slug: dep.projectSlug ?? null,
-      version: dep.version ?? null,
+      version: dep.version,
       versionId: dep.versionId,
       sha512: dep.sha512,
       sha1: dep.sha1,
@@ -150,4 +150,5 @@ export default async function addPlugin(
     // gets confirmed
     url: `https://modrinth.com/plugin/${project.slug}/version/${projectVersion.id}`,
   })
+  return true
 }

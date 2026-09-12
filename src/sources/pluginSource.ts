@@ -23,13 +23,14 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
     added: string[]
     changed: { identifier: string; oldVersion: string; newVersion: string }[]
   }>
+  /** Resolves to whether `plugins` was changed */
   addPlugin(
     plugins: Plugins,
     pluginIndicator: string,
     loader: Loader,
     gameVersion?: string,
     featured?: boolean,
-  ): Promise<void>
+  ): Promise<boolean>
 }
 
 export const allPluginSources: PluginSource[] = [modrinthSource, urlSource]

@@ -45,6 +45,11 @@ yarn run-cli update --game-version 1.21.1
 Like a version pin, this is not remembered. It has to be passed on every `add` and `update`, or the next `update` will
 move plugins to whatever is newest regardless of the Minecraft version it supports.
 
+### Featured versions only
+
+Pass `--featured` to `add` or `update` to only consider versions the author has marked as featured on Modrinth. It
+doesn't apply to dependencies, and like `--game-version` it has to be passed every time.
+
 ### Filtering search results
 
 `search` only shows plugins that run on Paper by default, including those built for Spigot or Bukkit. Pass `--loader` to
