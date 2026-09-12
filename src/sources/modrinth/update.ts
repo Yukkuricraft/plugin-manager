@@ -1,9 +1,7 @@
-import semver from 'semver'
-
 import { Plugins } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
 import { type Loader } from './loaders.js'
-import { formatDependencyInfo, getPluginVersion } from './utils.js'
+import { addRequiredDependencies, formatDependencyInfo, getPluginVersion } from './utils.js'
 import { MissingDataError } from '../../errors.js'
 
 export default async function update(
@@ -50,8 +48,6 @@ export default async function update(
     ...Object.fromEntries(changes.map((c) => [`modrinth:${c.slug}`, c.newVersionStr])),
   }
 
-  const newProjectIds = changes.map((c) => c.newVersion.projectVersion.project_id)
-
   newPlugins.all.modrinth = Object.fromEntries(
     changes.map(
       (c) =>
@@ -73,50 +69,14 @@ export default async function update(
     ),
   )
 
-  const depsToProcess = changes.flatMap((c) =>
-    c.newVersion.dependencies.map((d) => ({ dep: d, dependant: c.newVersion.projectVersion.project_id })),
+  addRequiredDependencies(
+    newPlugins.all.modrinth,
+    changes.flatMap((c) =>
+      c.newVersion.dependencies.map((dep) => ({ dep, dependant: c.newVersion.projectVersion.project_id })),
+    ),
   )
-
-  for (const { dep, dependant } of depsToProcess) {
-    if (dep.type !== 'required') continue
-
-    const existing = newPlugins.all.modrinth[dep.projectId]
-    const existingSemver = semver.coerce(existing?.version, {
-      includePrerelease: true,
-      rtl: true,
-    })
-    const newSemver = semver.coerce(dep.version, {
-      includePrerelease: true,
-      rtl: true,
-    })
-    if (existingSemver && newSemver && semver.compare(existingSemver, newSemver) >= 0) {
-      existing.dependedOnBy.add(dependant)
-      continue
-    } else if (existing) {
-      delete newPlugins.all.modrinth[dep.projectId]
-    }
-
-    const dependedOnBy = existing?.dependedOnBy ?? new Set<string>()
-    dependedOnBy.add(dependant)
-
-    newPlugins.all.modrinth[dep.projectId] = {
-      source: 'modrinth' as const,
-      slug: dep.projectSlug ?? null,
-      version: dep.version,
-      versionId: dep.versionId,
-      sha512: dep.sha512,
-      sha1: dep.sha1,
-      size: dep.size,
-      filename: dep.filename,
-      publishedAt: dep.publishedAt,
-      dependedOnBy,
-    }
-    newProjectIds.push(dep.projectId)
-
-    for (const depDep of dep.dependencies) {
-      depsToProcess.push({ dep: depDep, dependant: dep.projectId })
-    }
-  }
+  // Everything left after resolving, whether updated directly or pulled in as a dependency
+  const newProjectIds = Object.keys(newPlugins.all.modrinth)
 
   for (const c of changes) {
     if (c.newVersion.dependencies.length > 0) {

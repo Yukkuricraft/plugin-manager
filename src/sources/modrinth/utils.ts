@@ -1,9 +1,10 @@
 import * as prompts from '@inquirer/prompts'
 import chalk from 'chalk'
+import semver from 'semver'
 
 import type { components } from './modrinth.js'
 
-import { Plugins } from '../../pluginList.js'
+import { type AllModrinthPlugins, Plugins } from '../../pluginList.js'
 import { output, symbols } from '../../utils/output.js'
 import client from './client.js'
 import { type Loader, loaderCandidates, mostLoaderSpecific } from './loaders.js'
@@ -137,6 +138,50 @@ export async function getDependencyInfo(
       }
     default:
       throw new SanityCheckError(`Unexpected dependency type ${dep.dependency_type satisfies never}`)
+  }
+}
+
+/**
+ * Adds each required dependency in `deps`, and theirs in turn, to `modrinthPlugins`. A dependency already present at
+ * the same or a newer version is kept, and only gains the dependant in its dependedOnBy.
+ */
+export function addRequiredDependencies(
+  modrinthPlugins: AllModrinthPlugins,
+  deps: { dep: DependencyInfo; dependant: string }[],
+) {
+  const depsToProcess = [...deps]
+  for (const { dep, dependant } of depsToProcess) {
+    if (dep.type !== 'required') continue
+
+    const existing = modrinthPlugins[dep.projectId]
+    const existingSemver = semver.coerce(existing?.version, { includePrerelease: true, rtl: true })
+    const newSemver = semver.coerce(dep.version, { includePrerelease: true, rtl: true })
+    if (existingSemver && newSemver && semver.compare(existingSemver, newSemver) >= 0) {
+      existing.dependedOnBy.add(dependant)
+      continue
+    } else if (existing) {
+      delete modrinthPlugins[dep.projectId]
+    }
+
+    const dependedOnBy = existing?.dependedOnBy ?? new Set<string>()
+    dependedOnBy.add(dependant)
+
+    modrinthPlugins[dep.projectId] = {
+      source: 'modrinth',
+      slug: dep.projectSlug ?? null,
+      version: dep.version,
+      versionId: dep.versionId,
+      sha512: dep.sha512,
+      sha1: dep.sha1,
+      size: dep.size,
+      filename: dep.filename,
+      publishedAt: dep.publishedAt,
+      dependedOnBy,
+    }
+
+    for (const depDep of dep.dependencies) {
+      depsToProcess.push({ dep: depDep, dependant: dep.projectId })
+    }
   }
 }
 
