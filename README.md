@@ -55,3 +55,8 @@ When you install plugins, three folders will be created:
 - `managedPlugins` where plugins automatically downloaded go
 - `unmanagedPlugins` where you can put anything that not managed by the script. Configs go here.
 - `plugins` the contents of `managedPlugins` and `unmanagedPlugins` merged into one folder.
+
+## Developing
+
+Run `yarn check` before committing. It runs lint, the format check and the typecheck.
+`yarn run-cli` uses tsx, which doesn't typecheck, so type errors only show up here.

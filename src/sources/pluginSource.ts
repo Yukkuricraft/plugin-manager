@@ -7,7 +7,7 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   readonly prefix: 'modrinth' | 'url'
 
   search(query: string): Promise<void>
-  findPlugin(query: string, plugins: AllPlugins): { plugin: Plugin; id: string } | null
+  findPlugin(query: string, plugins: AllPlugins): Promise<{ plugin: Plugin; id: string } | null>
   viewPlugins(plugins: { plugin: Plugin; id: string }[], last: boolean): Promise<void>
   removePlugin(plugins: Plugins, allToRemove: { plugin: BasePlugin; id: string }[]): void
   install(plugins: AllPlugins): Promise<void>

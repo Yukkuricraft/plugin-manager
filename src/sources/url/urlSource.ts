@@ -7,7 +7,7 @@ import { UserError, ValidationError } from '../../errors.js'
 
 const urlSource: PluginSource<UrlPlugin> = {
   prefix: 'url',
-  findPlugin(query: string, plugins: AllPlugins): { plugin: UrlPlugin; id: string } | null {
+  async findPlugin(query: string, plugins: AllPlugins): Promise<{ plugin: UrlPlugin; id: string } | null> {
     const plugin = plugins.url[query]
     return plugin ? { plugin, id: query } : null
   },
@@ -34,12 +34,23 @@ const urlSource: PluginSource<UrlPlugin> = {
       url,
     }
   },
-  async update(): Promise<{
+  async update(
+    existingPlugins: Plugins,
+    newPlugins: Plugins,
+  ): Promise<{
     changelog: string
     removed: string[]
     added: string[]
     changed: { identifier: string; oldVersion: string; newVersion: string }[]
   }> {
+    // URLs have nothing to check for updates, but newPlugins starts empty, so they're carried over as-is
+    for (const [id, plugin] of Object.entries(existingPlugins.all.url)) {
+      newPlugins.all.url[id] = plugin
+
+      const addedKey = `url:${id}` as const
+      if (addedKey in existingPlugins.added) newPlugins.added[addedKey] = existingPlugins.added[addedKey]
+    }
+
     return {
       changelog: '',
       removed: [],

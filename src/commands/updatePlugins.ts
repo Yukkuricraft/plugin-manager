@@ -11,6 +11,7 @@ export default async function updatePlugins(loader: Loader, gameVersion?: string
   const existingPlugins = await loadPlugins()
 
   const newPlugins: Plugins = {
+    version: 1,
     added: {},
     all: {
       modrinth: {},
