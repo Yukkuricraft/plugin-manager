@@ -8,7 +8,7 @@ import { type AllModrinthPlugins, Plugins } from '../../pluginList.js'
 import { output, symbols } from '../../utils/output.js'
 import client from './client.js'
 import { type Loader, loaderCandidates, mostLoaderSpecific } from './loaders.js'
-import { MissingDataError, RequestError, SanityCheckError, UserError } from '../../errors.js'
+import { MissingDataError, NoCompatibleVersionError, RequestError, SanityCheckError, UserError } from '../../errors.js'
 
 export interface ExternalDependencyInfo {
   type: 'external'
@@ -91,7 +91,7 @@ export async function getDependencyInfo(
     }
     version = versionRes.data
   } else {
-    const ver = await getPluginVersion(dep.project_id, loader, { gameVersion })
+    const ver = await getPluginVersion(dep.project_id, loader, { gameVersion, name: projectRes.data.slug })
     version = ver.projectVersion
     dependencyInfo = ver.dependencies
   }
@@ -143,7 +143,8 @@ export async function getDependencyInfo(
 
 /**
  * Adds each required dependency in `deps`, and theirs in turn, to `modrinthPlugins`. A dependency already present at
- * the same or a newer version is kept, and only gains the dependant in its dependedOnBy.
+ * the same or a newer version is kept, and only gains the dependant in its dependedOnBy. When an entry is replaced
+ * by a newer build, its recorded overrides are kept.
  */
 export function addRequiredDependencies(
   modrinthPlugins: AllModrinthPlugins,
@@ -177,10 +178,50 @@ export function addRequiredDependencies(
       filename: dep.filename,
       publishedAt: dep.publishedAt,
       dependedOnBy,
+      // The entry being replaced here may be a plugin the user added themselves, with overrides
+      // recorded on it, so those overrides need to carry over to the newer build
+      overrides: existing?.overrides,
     }
 
     for (const depDep of dep.dependencies) {
       depsToProcess.push({ dep: depDep, dependant: dep.projectId })
+    }
+  }
+}
+
+/**
+ * Copies the plugins named in `ids`, plus everything they transitively depend on, from `from` into
+ * `into`, preserving every field except `dependedOnBy`, which only keeps the dependants that are also
+ * being carried over.
+ *
+ * Used during update when a plugin (or one of its dependencies) has no version compatible with the new
+ * Minecraft version, and the user chooses to keep its current build rather than abort. If a dependency
+ * is already present in `into` (because it was resolved fresh against the new Minecraft version), that
+ * resolved entry is left alone and just gains the carried-over plugin as a dependant. Dependants that
+ * are not themselves being carried over are left out, since a plugin resolved fresh registers itself as
+ * a dependant through addRequiredDependencies instead.
+ */
+export function carryOverPlugins(from: AllModrinthPlugins, into: AllModrinthPlugins, ids: string[]) {
+  // Walk dependedOnBy outward from ids to find every plugin that ids need, directly or transitively
+  const carried = new Set(ids)
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const [id, plugin] of Object.entries(from)) {
+      if (!carried.has(id) && [...plugin.dependedOnBy].some((d) => carried.has(d))) {
+        carried.add(id)
+        grew = true
+      }
+    }
+  }
+
+  for (const id of carried) {
+    const dependants = [...from[id].dependedOnBy].filter((d) => carried.has(d))
+    const resolved = into[id]
+    if (resolved) {
+      for (const d of dependants) resolved.dependedOnBy.add(d)
+    } else {
+      into[id] = { ...from[id], dependedOnBy: new Set(dependants) }
     }
   }
 }
@@ -231,6 +272,7 @@ export async function getPluginVersion(
   loader: Loader,
   opts?: {
     displayFor?: string
+    name?: string
     targetVersion?: string
     gameVersion?: string
     featured?: boolean
@@ -246,6 +288,7 @@ export async function getPluginVersion(
   loader: Loader,
   opts: {
     displayFor?: string
+    name?: string
     targetVersion?: string
     gameVersion?: string
     featured?: boolean
@@ -262,6 +305,7 @@ export async function getPluginVersion(
   loader: Loader,
   opts?: {
     displayFor?: string
+    name?: string
     targetVersion?: string
     gameVersion?: string
     featured?: boolean
@@ -273,7 +317,10 @@ export async function getPluginVersion(
   dependencies: DependencyInfo[]
   changelog?: [string, string][]
 }> {
-  const { targetVersion, gameVersion, featured, fromDate, changelog, displayFor } = opts ?? {}
+  const { targetVersion, gameVersion, featured, fromDate, changelog, displayFor, name } = opts ?? {}
+  // Dependencies pass name rather than displayFor, since displayFor also triggers the "Getting
+  // dependencies of" log below, which would otherwise print once per dependency
+  const projectName = name ?? displayFor ?? projectId
   const versionsRes = await client.GET('/project/{id|slug}/version', {
     params: {
       path: {
@@ -296,14 +343,14 @@ export async function getPluginVersion(
   if (targetVersion) {
     const matchingVersion = projectVersions.filter((v) => v.version_number === targetVersion)
     if (matchingVersion.length === 0) {
-      throw new UserError(`Version ${targetVersion} not found for plugin ${displayFor}${supportingGameVersion}`)
+      throw new UserError(`Version ${targetVersion} not found for plugin ${projectName}${supportingGameVersion}`)
     }
 
     // Resolve the loader within the requested version rather than across the whole project, so an
     // older version built for a different loader than the current ones is still reachable
     const candidates = mostLoaderSpecific(loaderCandidates(matchingVersion, loader))
     if (candidates.length === 0) {
-      throw new UserError(`Version ${targetVersion} of plugin ${displayFor} has no build compatible with ${loader}`)
+      throw new UserError(`Version ${targetVersion} of plugin ${projectName} has no build compatible with ${loader}`)
     } else if (candidates.length === 1) {
       projectVersion = candidates[0]
     } else {
@@ -343,9 +390,7 @@ export async function getPluginVersion(
     const all = [lastReleaseVersion, lastBetaVersion, lastAlphaVersion].filter((v) => v !== undefined)
 
     if (all.length === 0) {
-      throw new MissingDataError(
-        `No ${loader} versions found for plugin ${displayFor ?? projectId}${supportingGameVersion}`,
-      )
+      throw new NoCompatibleVersionError({ projectId, projectName, loader, gameVersion, featured })
     } else if (all.length === 1) {
       projectVersion = all[0]
     } else if (fromDate && all.every((v) => v.date_published <= fromDate)) {
