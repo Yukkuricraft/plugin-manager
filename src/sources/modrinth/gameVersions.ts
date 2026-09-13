@@ -1,6 +1,7 @@
 import * as prompts from '@inquirer/prompts'
 
 import client from './client.js'
+import { type Loader, loaderCandidates } from './loaders.js'
 import { RequestError, UserError } from '../../errors.js'
 
 let knownGameVersions: Promise<Set<string>> | undefined
@@ -42,4 +43,21 @@ export async function chooseGameVersion(
     default: defaultValue,
     validate: (value) => known.has(value) || unknownGameVersion(value),
   })
+}
+
+/**
+ * Returns the last entry of game_versions on the most recently published version of a project for the
+ * given loader, i.e. the newest Minecraft version its newest build declares support for. Used when `update`
+ * needs to tell the user how far behind a plugin is, so it fetches every version unfiltered rather than
+ * reusing the game-version filter that produced no results in the first place. Returns undefined if the
+ * project has no version at all for the loader.
+ */
+export async function newestSupportedGameVersion(projectId: string, loader: Loader): Promise<string | undefined> {
+  const res = await client.GET('/project/{id|slug}/version', { params: { path: { 'id|slug': projectId } } })
+  if (!res.data) throw new RequestError('Failed to get versions', { cause: res.error })
+
+  const listed = res.data.filter((v) => v.status !== 'unlisted')
+  const [newest] = loaderCandidates(listed, loader).sort((a, b) => b.date_published.localeCompare(a.date_published))
+  // A version's game_versions array lists Minecraft versions from oldest to newest, so the last entry is the newest one
+  return newest?.game_versions?.at(-1)
 }

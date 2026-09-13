@@ -10,6 +10,23 @@ export interface AddFlags extends ResolutionFlags {
   featured?: boolean
 }
 
+/** The Minecraft version (and optional featured-only filter) that `update` resolves plugins.json against */
+export interface UpdateTarget {
+  gameVersion: string
+  featured?: boolean
+}
+
+/**
+ * One plugin's Minecraft version override changing during `update`: either granted, because the plugin
+ * couldn't reach the target and is being held at its current build, or cleared, because a plugin that was
+ * previously held back has now caught up with the target.
+ */
+export interface OverrideChange {
+  identifier: string
+  change: 'granted' | 'cleared'
+  gameVersion: string
+}
+
 export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   readonly prefix: 'modrinth' | 'url'
 
@@ -23,14 +40,13 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   update(
     existingPlugins: Plugins,
     newPlugins: Plugins,
-    loader: Loader,
-    gameVersion?: string,
-    featured?: boolean,
+    target: UpdateTarget,
   ): Promise<{
     changelog: string
     removed: string[]
     added: string[]
     changed: { identifier: string; oldVersion: string; newVersion: string }[]
+    overrides: OverrideChange[]
   }>
   /** Resolves to whether `plugins` was changed */
   addPlugin(plugins: Plugins, pluginIndicator: string, flags: AddFlags): Promise<boolean>

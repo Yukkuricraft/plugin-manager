@@ -61,10 +61,24 @@ yarn run-cli add oldplugin --game-version 1.20.4
 updates keep resolving that plugin against its own loader. A Minecraft version override only records that the plugin
 lags, and `update` tries to bring it up to date every time.
 
+### Updating
+
+`update` asks which Minecraft version to update plugins for, defaulting to the one in `plugins.json`, and updates
+`plugins.json` to match. Pass `--game-version` to skip the question:
+
+```
+yarn run-cli update
+yarn run-cli update --game-version 1.21.4
+```
+
+When a plugin, or one of its dependencies, has no version for that Minecraft version, `update` asks whether to keep it
+at its current version, recorded as an override, or abort. Nothing is written unless every plugin is either updated or
+kept.
+
 ### Featured versions only
 
 Pass `--featured` to `add` or `update` to only consider versions the author has marked as featured on Modrinth. It
-doesn't apply to dependencies, and like `--game-version` it has to be passed every time.
+doesn't apply to dependencies, and isn't remembered, so it has to be passed every time.
 
 ### Filtering search results
 

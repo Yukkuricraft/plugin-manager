@@ -1,10 +1,9 @@
 /**
- * The loader versions are resolved for, read once in index.ts and passed down from there.
- *
- * Hardcoded for add and update, so this is the only place Paper is assumed. Search takes it as the
- * default for --loader, and the other commands could take their value off argv the same way.
+ * The loader `init` suggests as its default answer when asking which loader the server runs. Nothing
+ * resolves against it: every command resolves against the loader recorded in plugins.json, or an override
+ * on the specific plugin.
  */
-export const desiredLoader: Loader = 'paper'
+export const defaultLoader: Loader = 'paper'
 
 /**
  * For each loader Modrinth tags plugins with, the loader it inherits plugins from, or null if it
