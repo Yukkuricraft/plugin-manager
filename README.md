@@ -77,5 +77,5 @@ When you install plugins, three folders will be created:
 
 ## Developing
 
-Run `yarn check` before committing. It runs lint, the format check and the typecheck. `yarn run-cli` uses tsx, which
-doesn't typecheck, so type errors only show up here.
+Run `yarn check` before committing. It runs lint, the format check, the typecheck and the tests. `yarn run-cli` uses
+tsx, which doesn't typecheck, so type errors only show up here. Run the tests alone with `yarn test`.
