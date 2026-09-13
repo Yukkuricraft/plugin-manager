@@ -60,7 +60,7 @@ export default async function addPlugin(plugins: Plugins, pluginIndicator: strin
   for (const deviation of resolved.deviations) {
     const setting = deviation.field === 'loader' ? 'loader' : 'Minecraft version'
     output.warning(
-      `${project.slug ?? plugin} resolves against ${setting} ${deviation.usedValue} instead of ${deviation.configValue} from plugins.json. Recorded as an override`,
+      `${project.slug ?? plugin} resolves against ${setting} ${deviation.usedValue} instead of ${deviation.configValue} from plugins.json, so it will be recorded as an override`,
     )
   }
 

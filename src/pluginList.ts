@@ -111,8 +111,14 @@ export async function loadPlugins(path = defaultPluginsPath): Promise<Plugins> {
     throw e
   }
 
+  let raw: unknown
+  try {
+    raw = JSON.parse(str)
+  } catch (e) {
+    throw new UserError(`plugins.json is not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
+  }
+
   // Checked before parsing, so an old file gets a message saying what to do rather than a schema error
-  const raw: unknown = JSON.parse(str)
   const version = typeof raw === 'object' && raw !== null && 'version' in raw ? raw.version : undefined
   if (version !== pluginsFileVersion) {
     const found = typeof version === 'number' ? `version ${version}` : 'in an unrecognised format'
@@ -120,7 +126,16 @@ export async function loadPlugins(path = defaultPluginsPath): Promise<Plugins> {
       `plugins.json is ${found}, but this needs version ${pluginsFileVersion}. Delete plugins.json and run \`yarn run-cli init\``,
     )
   }
-  return plugins.decode(raw as z.input<typeof plugins>)
+
+  try {
+    return plugins.decode(raw as z.input<typeof plugins>)
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      const message = 'prettifyError' in z ? z.prettifyError(e) : e.message
+      throw new UserError(`plugins.json doesn't match the expected format: ${message}`)
+    }
+    throw e
+  }
 }
 
 export async function writePlugins(pluginsObj: Plugins, path = defaultPluginsPath) {

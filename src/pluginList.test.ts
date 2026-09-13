@@ -54,6 +54,26 @@ describe('loadPlugins', () => {
     await expect(loadPlugins(file)).rejects.toThrow(UserError)
   })
 
+  it('rejects invalid JSON with a UserError instead of a raw SyntaxError', async () => {
+    await fs.writeFile(file, '{not valid json')
+    await expect(loadPlugins(file)).rejects.toThrow(UserError)
+    await expect(loadPlugins(file)).rejects.toThrow('plugins.json is not valid JSON')
+  })
+
+  it('rejects a version 2 file that fails the schema with a UserError instead of a raw ZodError', async () => {
+    await fs.writeFile(
+      file,
+      JSON.stringify({
+        version: 2,
+        config: { loader: 'not-a-loader', gameVersion: '1.21.1' },
+        added: {},
+        all: { modrinth: {}, url: {} },
+      }),
+    )
+    await expect(loadPlugins(file)).rejects.toThrow(UserError)
+    await expect(loadPlugins(file)).rejects.toThrow("plugins.json doesn't match the expected format")
+  })
+
   it('round-trips a version 2 file, including overrides and dependedOnBy', async () => {
     await writePlugins(v2, file)
     expect(await loadPlugins(file)).toEqual(v2)

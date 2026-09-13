@@ -195,20 +195,23 @@ export function addRequiredDependencies(
  * being carried over.
  *
  * Used during update when a plugin (or one of its dependencies) has no version compatible with the new
- * Minecraft version, and the user chooses to keep its current build rather than abort. If a dependency
- * is already present in `into` (because it was resolved fresh against the new Minecraft version), that
- * resolved entry is left alone and just gains the carried-over plugin as a dependant. Dependants that
- * are not themselves being carried over are left out, since a plugin resolved fresh registers itself as
- * a dependant through addRequiredDependencies instead.
+ * Minecraft version, and the user chooses to keep its current build rather than abort. A plugin already
+ * in `into` was resolved fresh: it's left as it is and gains the carried-over dependant, and its own
+ * dependencies aren't carried, since addRequiredDependencies re-registers the ones it still needs.
  */
 export function carryOverPlugins(from: AllModrinthPlugins, into: AllModrinthPlugins, ids: string[]) {
+  // Entries already in `into` were resolved fresh, so the walk must not expand through them, nor
+  // credit them as dependants on a copied entry - see the docblock above.
+  const resolvedFresh = new Set(Object.keys(into))
+
   // Walk dependedOnBy outward from ids to find every plugin that ids need, directly or transitively
   const carried = new Set(ids)
+  const pullsInDeps = (d: string) => carried.has(d) && !resolvedFresh.has(d)
   let grew = true
   while (grew) {
     grew = false
     for (const [id, plugin] of Object.entries(from)) {
-      if (!carried.has(id) && [...plugin.dependedOnBy].some((d) => carried.has(d))) {
+      if (!carried.has(id) && [...plugin.dependedOnBy].some(pullsInDeps)) {
         carried.add(id)
         grew = true
       }
@@ -216,7 +219,7 @@ export function carryOverPlugins(from: AllModrinthPlugins, into: AllModrinthPlug
   }
 
   for (const id of carried) {
-    const dependants = [...from[id].dependedOnBy].filter((d) => carried.has(d))
+    const dependants = [...from[id].dependedOnBy].filter(pullsInDeps)
     const resolved = into[id]
     if (resolved) {
       for (const d of dependants) resolved.dependedOnBy.add(d)

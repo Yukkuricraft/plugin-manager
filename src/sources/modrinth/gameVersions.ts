@@ -24,8 +24,8 @@ function unknownGameVersion(gameVersion: string) {
  * the user is prompted for one, with `message` as the question and `defaultValue` as the pre-filled answer.
  *
  * Either way the version is checked against Modrinth first. A `given` version Modrinth doesn't recognise throws
- * `UserError`; an unrecognised answer at the prompt shows the same message and asks again. Either way, a typo is
- * caught here rather than showing up later as "no versions found" for every plugin.
+ * `UserError`; an unrecognised answer at the prompt shows the same message and asks again. A typo is caught
+ * here rather than showing up later as "no versions found" for every plugin.
  */
 export async function chooseGameVersion(
   given: string | undefined,

@@ -33,7 +33,9 @@ yarn run-cli init --loader paper --game-version 1.21.1
 ```
 
 `init` won't overwrite an existing `plugins.json`. A `plugins.json` made before `init` existed is rejected: delete it
-and run `init` again.
+and run `init`.
+
+`show` prints the loader and Minecraft version above the plugin list, and marks each plugin carrying an override.
 
 ### Pinning a version
 
@@ -49,8 +51,8 @@ Note that `update` does not currently preserve a pin, and will move the plugin b
 ### Overriding the loader or Minecraft version
 
 `add` resolves against the loader and Minecraft version in `plugins.json`. Pass `--loader` or `--game-version` (or
-`--mc-version`) to resolve one plugin against something else: a plugin that only publishes a Spigot build, say, or one
-that hasn't been marked as supporting a Minecraft version but still works on it.
+`--mc-version`) to resolve the plugins being added against something else: to use a plugin's Spigot build instead of its
+Paper one, say, or a version that hasn't been marked as supporting your Minecraft version but still works on it.
 
 ```
 yarn run-cli add someplugin --loader spigot
@@ -59,7 +61,8 @@ yarn run-cli add oldplugin --game-version 1.20.4
 
 `add` warns when it does this, and records the difference as an override on the plugin. A loader override is kept, so
 updates keep resolving that plugin against its own loader. A Minecraft version override only records that the plugin
-lags, and `update` tries to bring it up to date every time.
+lags, and `update` tries to bring it up to date every time. To drop it, add the plugin again with `--loader` set to the
+server's loader.
 
 ### Updating
 
@@ -72,8 +75,7 @@ yarn run-cli update --game-version 1.21.4
 ```
 
 When a plugin, or one of its dependencies, has no version for that Minecraft version, `update` asks whether to keep it
-at its current version, recorded as an override, or abort. Nothing is written unless every plugin is either updated or
-kept.
+at its current version or abort. Nothing is written unless every plugin is either updated or kept.
 
 ### Featured versions only
 
@@ -92,8 +94,8 @@ yarn run-cli search worldedit --any-game-version
 yarn run-cli search luckperms --loader velocity
 ```
 
-Both are matched against individual versions, so passing both only shows plugins with a single version supporting the
-loader and the Minecraft version together.
+The loader and Minecraft version are matched against individual versions, so a plugin only shows if a single version
+supports both.
 
 ## How it works
 
