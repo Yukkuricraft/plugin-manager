@@ -46,18 +46,20 @@ yarn run-cli add fastasyncworldedit@2.15.1
 
 Note that `update` does not currently preserve a pin, and will move the plugin back to the latest version.
 
-### Targeting a Minecraft version
+### Overriding the loader or Minecraft version
 
-Pass `--game-version` (or `--mc-version`) to `add` or `update` to only consider plugin versions supporting that
-Minecraft version.
+`add` resolves against the loader and Minecraft version in `plugins.json`. Pass `--loader` or `--game-version` (or
+`--mc-version`) to resolve one plugin against something else: a plugin that only publishes a Spigot build, say, or one
+that hasn't been marked as supporting a Minecraft version but still works on it.
 
 ```
-yarn run-cli add fastasyncworldedit --game-version 1.21.1
-yarn run-cli update --game-version 1.21.1
+yarn run-cli add someplugin --loader spigot
+yarn run-cli add oldplugin --game-version 1.20.4
 ```
 
-Like a version pin, this is not remembered. It has to be passed on every `add` and `update`, or the next `update` will
-move plugins to whatever is newest regardless of the Minecraft version it supports.
+`add` warns when it does this, and records the difference as an override on the plugin. A loader override is kept, so
+updates keep resolving that plugin against its own loader. A Minecraft version override only records that the plugin
+lags, and `update` tries to bring it up to date every time.
 
 ### Featured versions only
 
@@ -69,7 +71,7 @@ doesn't apply to dependencies, and like `--game-version` it has to be passed eve
 `search` only shows plugins that run on the loader in `plugins.json`, including those built for a loader it's compatible
 with, and that have a version supporting its Minecraft version. Pass `--loader` or `--game-version` (or `--mc-version`)
 to search for something else, or `--any-game-version` to include plugins whichever Minecraft versions they support, such
-as ones that lag behind yours but may still work.
+as ones that lag behind the server version but may still work.
 
 ```
 yarn run-cli search worldedit --any-game-version
@@ -81,13 +83,13 @@ loader and the Minecraft version together.
 
 ## How it works
 
-Whenever you add, remove or update a plugin, the changes will be reflected in plugins.json. This file acts as your lock
+Whenever you add, remove or update a plugin, the changes will be reflected in plugins.json. This file acts as the lock
 file, and all installs will be validated against it.
 
 When you install plugins, three folders will be created:
 
 - `managedPlugins` where plugins automatically downloaded go
-- `unmanagedPlugins` where you can put anything that not managed by the script. Configs go here.
+- `unmanagedPlugins` where you can put anything that's not managed by the script. Configs go here.
 - `plugins` the contents of `managedPlugins` and `unmanagedPlugins` merged into one folder.
 
 ## Developing

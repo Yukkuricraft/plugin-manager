@@ -1,8 +1,14 @@
 import { type AllPlugins, type Plugin as BasePlugin, Plugins } from '../pluginList.js'
+import { type ResolutionFlags } from '../resolution.js'
 import { type Loader } from './modrinth/loaders.js'
 import modrinthSource from './modrinth/modrinthSource.js'
 import { type PluginEntry } from './pluginEntry.js'
 import urlSource from './url/urlSource.js'
+
+/** The command-line flags `add` passes through to a plugin source when resolving each plugin it's given */
+export interface AddFlags extends ResolutionFlags {
+  featured?: boolean
+}
 
 export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   readonly prefix: 'modrinth' | 'url'
@@ -27,13 +33,7 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
     changed: { identifier: string; oldVersion: string; newVersion: string }[]
   }>
   /** Resolves to whether `plugins` was changed */
-  addPlugin(
-    plugins: Plugins,
-    pluginIndicator: string,
-    loader: Loader,
-    gameVersion?: string,
-    featured?: boolean,
-  ): Promise<boolean>
+  addPlugin(plugins: Plugins, pluginIndicator: string, flags: AddFlags): Promise<boolean>
 }
 
 export const allPluginSources: PluginSource[] = [modrinthSource, urlSource]

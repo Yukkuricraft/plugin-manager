@@ -18,6 +18,8 @@ const pluginSourceDescription =
 const urlSyntaxDescription = 'When adding a plugin from an URL, the correct syntax is "url:<identifier>@<url>"'
 const gameVersionDescription =
   'Only consider plugin versions supporting this Minecraft version, e.g. "1.21.1". Without it, the newest version is used whichever Minecraft versions it supports. Applies to dependencies too.'
+const addGameVersionDescription =
+  'Resolve against this Minecraft version, e.g. "1.20.4", instead of the one in plugins.json, recording it as an override on the plugin. Applies to dependencies too.'
 const featuredDescription =
   'Only consider plugin versions the author has marked as featured on Modrinth. Does not apply to dependencies.'
 const versionSyntaxDescription =
@@ -83,16 +85,21 @@ await yargs()
           array: true,
           demandOption: true,
         })
+        .option('loader', {
+          choices: allLoaders,
+          describe:
+            'Resolve against this loader instead of the one in plugins.json, recording it as an override on the plugin',
+        })
         .option('game-version', {
           type: 'string',
           alias: 'mc-version',
-          describe: gameVersionDescription,
+          describe: addGameVersionDescription,
         })
         .option('featured', {
           type: 'boolean',
           describe: featuredDescription,
         }),
-    (argv) => addPlugins(argv.plugin, desiredLoader, argv.gameVersion, argv.featured),
+    (argv) => addPlugins(argv.plugin, { loader: argv.loader, gameVersion: argv.gameVersion, featured: argv.featured }),
   )
   .command(
     'view <plugin..>',

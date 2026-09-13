@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import { type PluginOverrides } from '../pluginList.js'
 import { SanityCheckError } from '../errors.js'
 
 export const symbols = {
@@ -31,6 +32,17 @@ export function formatSize(bytes: number) {
 /** Formats an ISO timestamp as YYYY-MM-DD */
 export function formatDate(iso: string) {
   return new Date(iso).toISOString().slice(0, 10)
+}
+
+/**
+ * Describes a plugin's overrides on one line, e.g. "loader spigot, Minecraft 1.20.4". Returns undefined when
+ * there are no overrides to show, so callers can skip the line entirely instead of printing an empty one.
+ */
+export function formatOverrides(overrides: PluginOverrides | undefined): string | undefined {
+  const parts = []
+  if (overrides?.loader) parts.push(`loader ${overrides.loader}`)
+  if (overrides?.gameVersion) parts.push(`Minecraft ${overrides.gameVersion}`)
+  return parts.length > 0 ? parts.join(', ') : undefined
 }
 
 export const output = {
@@ -124,6 +136,7 @@ export const output = {
     size?: number
     publishedAt?: string
     mcVersions?: string[]
+    overrides?: PluginOverrides
     categories?: string[]
     dependencies?: string[]
     requiredBy?: string[]
@@ -154,6 +167,11 @@ export const output = {
     }
     if (data.mcVersions) {
       console.log(`   ${output.label('MC Versions')} ${chalk.dim.yellowBright(data.mcVersions.join(', ') ?? 'N/A')}`)
+    }
+    // Only shown when the plugin resolved against something other than plugins.json's loader or Minecraft version
+    const overrides = formatOverrides(data.overrides)
+    if (overrides) {
+      console.log(`   ${this.label('Override')} ${chalk.yellowBright(overrides)}`)
     }
     if (data.filename) {
       const size = data.size === undefined ? '' : ` ${this.dim(`(${formatSize(data.size)})`)}`
