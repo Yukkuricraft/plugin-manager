@@ -66,12 +66,13 @@ doesn't apply to dependencies, and like `--game-version` it has to be passed eve
 
 ### Filtering search results
 
-`search` only shows plugins that run on Paper by default, including those built for Spigot or Bukkit. Pass `--loader` to
-search for a different loader, and `--game-version` (or `--mc-version`) to only show plugins supporting that Minecraft
-version.
+`search` only shows plugins that run on the loader in `plugins.json`, including those built for a loader it's compatible
+with, and that have a version supporting its Minecraft version. Pass `--loader` or `--game-version` (or `--mc-version`)
+to search for something else, or `--any-game-version` to include plugins whichever Minecraft versions they support, such
+as ones that lag behind yours but may still work.
 
 ```
-yarn run-cli search worldedit --game-version 1.21.1
+yarn run-cli search worldedit --any-game-version
 yarn run-cli search luckperms --loader velocity
 ```
 
