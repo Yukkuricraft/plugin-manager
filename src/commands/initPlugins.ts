@@ -2,7 +2,7 @@ import * as prompts from '@inquirer/prompts'
 
 import { type Plugins, pluginsExist, writePlugins } from '../pluginList.js'
 import { chooseGameVersion } from '../sources/modrinth/gameVersions.js'
-import { allLoaders, desiredLoader, type Loader } from '../sources/modrinth/loaders.js'
+import { allLoaders, defaultLoader, type Loader } from '../sources/modrinth/loaders.js'
 import { UserError } from '../errors.js'
 import { output } from '../utils/output.js'
 
@@ -21,7 +21,7 @@ export default async function initPlugins(flags: { loader?: Loader; gameVersion?
     (await prompts.select({
       message: 'Which loader does the server run?',
       choices: allLoaders.map((l) => ({ name: l, value: l })),
-      default: desiredLoader,
+      default: defaultLoader,
     }))
   const gameVersion = await chooseGameVersion(flags.gameVersion, 'Which Minecraft version does the server run?')
 
