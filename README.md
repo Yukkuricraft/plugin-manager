@@ -7,19 +7,33 @@ yarn run-cli --help
 plugins <cmd> [args]
 
 Commands:
-  plugins search <plugin>     Search for plugins
-  plugins add <plugin...>     Add plugins
-  plugins view <plugin...>    View information about existing plugins
-  plugins show                Show a summary of all plugins in plugins.json
-  plugins remove <plugin...>  Remove plugins
-  plugins install             Install plugins
-  plugins update              Update plugins
-  plugins completion          generate completion script
+  plugins init               Create plugins.json for a server
+  plugins search <plugin>    Search for plugins
+  plugins add <plugin..>     Add plugins
+  plugins view <plugin..>    View information about existing plugins
+  plugins show               Show a summary of all plugins in plugins.json
+  plugins remove <plugin..>  Remove plugins
+  plugins install            Install plugins
+  plugins update             Update plugins
+  plugins completion         generate completion script
 
 Options:
   --help     Show help                                                 [boolean]
   --version  Show version number                                       [boolean]
 ```
+
+### Setting up
+
+Every other command needs a `plugins.json`, which records the loader and Minecraft version the server runs. Create one
+with `init`, which asks for both unless they're passed:
+
+```
+yarn run-cli init
+yarn run-cli init --loader paper --game-version 1.21.1
+```
+
+`init` won't overwrite an existing `plugins.json`. A `plugins.json` made before `init` existed is rejected: delete it
+and run `init` again.
 
 ### Pinning a version
 
