@@ -2,6 +2,7 @@ import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
 
 import addPlugins from './commands/addPlugins.js'
+import initPlugins from './commands/initPlugins.js'
 import installPlugins from './commands/installPlugins.js'
 import removePlugins from './commands/removePlugins.js'
 import searchPlugins from './commands/searchPlugins.js'
@@ -25,6 +26,22 @@ const versionSyntaxDescription =
 await yargs()
   .scriptName('plugins')
   .usage('$0 <cmd> [args]')
+  .command(
+    'init',
+    'Create plugins.json for a server',
+    (yargs) =>
+      yargs
+        .option('loader', {
+          choices: allLoaders,
+          describe: 'The loader the server runs. Asked for if not given',
+        })
+        .option('game-version', {
+          type: 'string',
+          alias: 'mc-version',
+          describe: 'The Minecraft version the server runs, e.g. "1.21.1". Asked for if not given',
+        }),
+    (argv) => initPlugins({ loader: argv.loader, gameVersion: argv.gameVersion }),
+  )
   .command(
     'search <plugin>',
     'Search for plugins',
