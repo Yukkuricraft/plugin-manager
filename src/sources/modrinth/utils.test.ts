@@ -136,4 +136,20 @@ describe('carryOverPlugins', () => {
 
     expect(from.kept.dependedOnBy.size).toBe(0)
   })
+
+  it('does not pull in the old dependency of a plugin that was resolved fresh', () => {
+    const from: AllModrinthPlugins = {
+      kept: modrinthEntry({ slug: 'kept' }),
+      dependency: modrinthEntry({ slug: 'dependency', version: '1.0.0', dependedOnBy: new Set(['kept']) }),
+      oldTransitiveDep: modrinthEntry({ slug: 'oldTransitiveDep', dependedOnBy: new Set(['dependency']) }),
+    }
+    const into: AllModrinthPlugins = {
+      dependency: modrinthEntry({ slug: 'dependency', version: '2.0.0', dependedOnBy: new Set() }),
+    }
+    carryOverPlugins(from, into, ['kept'])
+
+    expect(Object.keys(into).sort()).toEqual(['dependency', 'kept'])
+    expect(into.dependency.version).toBe('2.0.0')
+    expect(into.dependency.dependedOnBy).toEqual(new Set(['kept']))
+  })
 })

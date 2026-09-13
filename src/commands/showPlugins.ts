@@ -9,6 +9,9 @@ function plural(count: number, word: string) {
 
 export default async function showPlugins(verbose: boolean) {
   const pluginsObj = await loadPlugins()
+  const { loader, gameVersion } = pluginsObj.config
+  console.log(`${output.label('Server')} ${output.highlight(`${loader} ${gameVersion}`)}`)
+  output.blank()
   const all = allPluginSources
     .flatMap((source) => source.listEntries(pluginsObj))
     .sort((a, b) => a.name.localeCompare(b.name))

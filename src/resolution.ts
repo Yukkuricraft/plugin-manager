@@ -2,10 +2,9 @@ import { type PluginOverrides, type ServerConfig } from './pluginList.js'
 import { type Loader } from './sources/modrinth/loaders.js'
 
 /**
- * Helpers for resolving the loader and game versions for a given plugin.
- * Loader and game versions can be passed in from the plugins.json config, overrides for
- * that specific plugin in plugins.json, and from explicitly supplied --loader/--game-version flags.
- * These helpers ensure we resolve the final target plugin version/loader consistently.
+ * Works out which loader and Minecraft version each plugin is resolved against, from the configuration in
+ * plugins.json, the plugin's recorded overrides and any --loader/--game-version flags, and which overrides
+ * to record as a result.
  */
 
 export interface ResolutionFlags {
@@ -21,10 +20,10 @@ export interface Deviation {
 }
 
 /**
- * Represents the optimistic target information for a given plugin.
- * The optimistic characterization matters in regards to gameVersion - we don't
- * carry forward gameVersion overrides and only account for what's in the config or passed in via CLI flags
- * The consuming command handles the case where the desired/optimistic gameVersion doesn't exist independently.
+ * The loader and Minecraft version to resolve one plugin against, and each field where that differs from
+ * the server configuration. The Minecraft version is always the configured one or a --game-version flag,
+ * never the plugin's recorded Minecraft version override, so the plugin may have no build for it; the
+ * caller deals with that (update offers to keep the plugin, add fails).
  */
 export interface ResolvedTarget {
   loader: Loader
@@ -37,11 +36,11 @@ export interface ResolvedTarget {
  * configuration, the overrides already stored for that plugin (if any), and any flags passed on
  * the command line for this run.
  *
- * For the loader, a flag wins, then the plugin's own override, then the configuration - a loader
- * override is sticky, since it records that the plugin only publishes for that loader. For the
- * Minecraft version, a flag wins, then the configuration; the plugin's own gameVersion override is
- * never consulted here, because it only records that the plugin is lagging behind the
- * configuration, not what it should resolve against next.
+ * For the loader, a flag wins, then the plugin's own override, then the configuration. A loader
+ * override is sticky: it keeps applying on every later add and update of that plugin until a
+ * --loader flag replaces it. For the Minecraft version, a flag wins, then the configuration; the
+ * plugin's own gameVersion override is never consulted here, because it only records that the
+ * plugin is lagging behind the configuration, not what it should resolve against next.
  *
  * The returned deviations list every field where the value used differs from the configuration, so
  * callers can tell what to store as overrides or report to the user.
@@ -77,8 +76,8 @@ export function overridesFor(resolved: ResolvedTarget): PluginOverrides | undefi
 
 /**
  * Records that a plugin is being held at `gameVersion` instead of the configured one, keeping any
- * existing loader override in place. Used by `run-cli update` when the user chooses to keep a plugin's
- * current build rather than upgrade it to the configuration's Minecraft version.
+ * existing loader override in place. Used by update when a plugin has no build for the new Minecraft
+ * version and the user keeps its current one.
  */
 export function grantGameVersionOverride(existing: PluginOverrides | undefined, gameVersion: string): PluginOverrides {
   return { ...existing, gameVersion }

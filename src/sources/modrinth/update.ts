@@ -20,7 +20,8 @@ export default async function update(
   overrides: OverrideChange[]
 }> {
   // Resolve every plugin against a copy of the configuration already moved to the target version, rather
-  // than passing the target as a --game-version flag, so it is the configured version, not a deviation.
+  // than passing the target as a --game-version flag, so the target counts as the configured Minecraft
+  // version and no plugin records an override just for being updated to it.
   const config = { ...existingPlugins.config, gameVersion: target.gameVersion }
 
   const changes = []
@@ -45,12 +46,15 @@ export default async function update(
     })
 
     if (version instanceof NoCompatibleVersionError) {
-      // A plugin already held back keeps its recorded version; otherwise it lags at the current config version.
+      // The Minecraft version the plugin's current build was resolved against: its existing override,
+      // or else the configuration before this update.
       const lagsAt = plugin.overrides?.gameVersion ?? existingPlugins.config.gameVersion
       const alreadyLagging = plugin.overrides?.gameVersion !== undefined
-      // lagsAt equals the target when the plugin isn't behind the target and just has no compatible build
-      // this run (e.g. with --featured). A plugin at the configured Minecraft version carries no game
-      // version override, so any it has is cleared rather than granted.
+      // lagsAt equals the target when update isn't retargeting (so --featured found no featured build,
+      // or every build was pulled), or when it retargets to exactly the version the plugin is held back
+      // at. Either way the kept build matches the new configuration, and a plugin matching the
+      // configuration carries no Minecraft version override, so any it has is cleared rather than
+      // granted.
       const staysAtTarget = lagsAt === target.gameVersion
       await keepOrAbort(
         { id, slug: plugin.slug, version: plugin.version, lagsAt, alreadyLagging, staysAtTarget },
@@ -193,10 +197,10 @@ export default async function update(
 
 /**
  * Handles a plugin (or one of its dependencies) having no version compatible with the target. Reports what
- * blocked it and, if it's known, how far behind that blocker actually is, then asks whether to keep the
- * plugin at its current build. Returns normally if the user agrees to keep it; throws a UserError naming the
- * same details if they'd rather abort. Nothing is written yet at that point: updatePlugins only writes
- * plugins.json once every plugin source has finished.
+ * blocked it and, if it's known, the newest Minecraft version the blocker's newest build supports, then asks
+ * whether to keep the plugin at its current build. Returns normally if the user agrees to keep it; throws a
+ * UserError naming the same details if they'd rather abort. Nothing is written yet at that point: updatePlugins
+ * only writes plugins.json once every plugin source has finished.
  */
 async function keepOrAbort(
   plugin: {

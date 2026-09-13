@@ -18,8 +18,8 @@ export interface UpdateTarget {
 
 /**
  * One plugin's Minecraft version override changing during `update`: either granted, because the plugin
- * couldn't reach the target and is being held at its current build, or cleared, because a plugin that was
- * previously held back has now caught up with the target.
+ * couldn't reach the target and is being held at its current build, or cleared, because the plugin now
+ * matches the target: it resolved at the target, or the target is the version it was held back at.
  */
 export interface OverrideChange {
   identifier: string

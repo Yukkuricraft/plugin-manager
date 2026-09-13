@@ -1,7 +1,7 @@
 /**
  * The loader `init` suggests as its default answer when asking which loader the server runs. Nothing
  * resolves against it: every command resolves against the loader recorded in plugins.json, or an override
- * on the specific plugin.
+ * on the specific plugin, or a --loader flag.
  */
 export const defaultLoader: Loader = 'paper'
 
