@@ -50,16 +50,27 @@ await yargs()
         .positional('plugin', { type: 'string', describe: 'Query to search with', demandOption: true })
         .option('loader', {
           choices: allLoaders,
-          default: desiredLoader,
           describe:
-            'Only show plugins that run on this loader, including those built for a loader it is compatible with',
+            'Only show plugins that run on this loader, including those built for a loader it is compatible with. Defaults to the loader in plugins.json',
         })
         .option('game-version', {
           type: 'string',
           alias: 'mc-version',
-          describe: 'Only show plugins with a version supporting this Minecraft version, e.g. "1.21.1"',
+          describe:
+            'Only show plugins with a version supporting this Minecraft version, e.g. "1.21.1". Defaults to the Minecraft version in plugins.json',
+        })
+        .option('any-game-version', {
+          type: 'boolean',
+          conflicts: 'game-version',
+          describe:
+            'Show plugins whichever Minecraft versions they support, including ones that lag behind plugins.json',
         }),
-    (argv) => searchPlugins(argv.plugin, argv.loader, argv.gameVersion),
+    (argv) =>
+      searchPlugins(argv.plugin, {
+        loader: argv.loader,
+        gameVersion: argv.gameVersion,
+        anyGameVersion: argv.anyGameVersion,
+      }),
   )
   .command(
     'add <plugin..>',
