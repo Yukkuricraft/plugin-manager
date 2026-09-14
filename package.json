@@ -7,6 +7,8 @@
     "run-cli": "tsx ./src/index.ts",
     "lint": "eslint",
     "fixlint": "eslint --fix",
+    "typecheck": "tsc --noEmit",
+    "check": "yarn lint && yarn format-check && yarn typecheck",
     "format-check": "prettier --check \"**/*.(md|yaml|json|js|ts)\"",
     "format": "prettier --write \"**/*.(md|yaml|json|js|ts)\""
   },

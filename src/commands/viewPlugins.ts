@@ -5,11 +5,13 @@ import { SanityCheckError, UserError } from '../errors.js'
 export default async function viewPlugins(plugins: string[]) {
   const pluginsMap = await loadPlugins()
 
-  const resolvedPlugins = plugins.map((p) => {
+  // One at a time, since an ambiguous name prompts the user
+  const resolvedPlugins = []
+  for (const p of plugins) {
     const { source, strippedQuery } = getPluginSource(p)
-    const pluginWithId = source.findPlugin(strippedQuery, pluginsMap.all)
-    return { source, lookedFor: strippedQuery, pluginWithId }
-  })
+    const pluginWithId = await source.findPlugin(strippedQuery, pluginsMap.all)
+    resolvedPlugins.push({ source, lookedFor: strippedQuery, pluginWithId })
+  }
 
   const notFoundPlugins = resolvedPlugins.filter(({ pluginWithId }) => pluginWithId === null)
   if (notFoundPlugins.length > 0) {

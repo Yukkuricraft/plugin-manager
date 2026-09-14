@@ -1,14 +1,14 @@
-import semver from 'semver'
-
 import { Plugins } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
 import client from './client.js'
-import { formatDependencyInfo, getPluginVersion } from './utils.js'
+import { type Loader } from './loaders.js'
+import { addRequiredDependencies, formatDependencyInfo, getPluginVersion } from './utils.js'
 import { MissingDataError, RequestError } from '../../errors.js'
 
 export default async function addPlugin(
   plugins: Plugins,
   pluginIndicator: string,
+  loader: Loader,
   gameVersion?: string,
   featured?: boolean,
 ) {
@@ -30,7 +30,7 @@ export default async function addPlugin(
         output.info(
           `Plugin ${output.pluginName(plugin)} already in added list with the specified version. Exiting early`,
         )
-        return
+        return false
       }
     } else {
       output.info(
@@ -51,7 +51,7 @@ export default async function addPlugin(
   }
   const project = projectRes.data
 
-  const { projectVersion, dependencies: depInfos } = await getPluginVersion(project.id, {
+  const { projectVersion, dependencies: depInfos } = await getPluginVersion(project.id, loader, {
     targetVersion: version ?? undefined,
     displayFor: plugin,
     gameVersion,
@@ -84,47 +84,10 @@ export default async function addPlugin(
   }
 
   // Update the plugins ahead of formatting dependency info, so we can show conflicts on newly added plugins
-  const depsToProcess = []
-  depsToProcess.push(...depInfos.map((d) => ({ dep: d, dependant: project.id })))
-  for (const { dep, dependant } of depsToProcess) {
-    if (dep.type !== 'required') continue
-
-    const existing = plugins.all.modrinth[dep.projectId]
-    const existingSemver = semver.coerce(existing?.version, {
-      includePrerelease: true,
-      rtl: true,
-    })
-    const newSemver = semver.coerce(dep.version, {
-      includePrerelease: true,
-      rtl: true,
-    })
-    if (existingSemver && newSemver && semver.compare(existingSemver, newSemver) >= 0) {
-      existing.dependedOnBy.add(dependant)
-      continue
-    } else if (existing) {
-      delete plugins.all.modrinth[dep.projectId]
-    }
-
-    const dependedOnBy = existing?.dependedOnBy ?? new Set<string>()
-    dependedOnBy.add(dependant)
-
-    plugins.all.modrinth[dep.projectId] = {
-      source: 'modrinth',
-      slug: dep.projectSlug ?? null,
-      version: dep.version ?? null,
-      versionId: dep.versionId,
-      sha512: dep.sha512,
-      sha1: dep.sha1,
-      size: dep.size,
-      filename: dep.filename,
-      publishedAt: dep.publishedAt,
-      dependedOnBy,
-    }
-
-    for (const depDep of dep.dependencies) {
-      depsToProcess.push({ dep: depDep, dependant: dep.projectId })
-    }
-  }
+  addRequiredDependencies(
+    plugins.all.modrinth,
+    depInfos.map((dep) => ({ dep, dependant: project.id })),
+  )
 
   if (depInfos.length > 0) {
     output.dependency(`${output.pluginName(project.slug)} has dependencies:`)
@@ -134,4 +97,19 @@ export default async function addPlugin(
   }
 
   output.success(`Adding ${output.pluginName(project.title ?? plugin)}`)
+  output.pluginCard({
+    title: project.title,
+    slug: project.slug,
+    version: projectVersion.version_number,
+    versionType: projectVersion.version_type,
+    loaders: projectVersion.loaders ?? undefined,
+    mcVersions: projectVersion.game_versions ?? undefined,
+    filename: versionFile.filename,
+    size: versionFile.size,
+    publishedAt: projectVersion.date_published,
+    // The version page rather than the project page, so the exact build being downloaded is what
+    // gets confirmed
+    url: `https://modrinth.com/plugin/${project.slug}/version/${projectVersion.id}`,
+  })
+  return true
 }

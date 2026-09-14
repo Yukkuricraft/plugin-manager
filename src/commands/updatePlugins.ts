@@ -2,14 +2,16 @@ import * as prompts from '@inquirer/prompts'
 import fs from 'fs/promises'
 
 import { loadPlugins, Plugins, writePlugins } from '../pluginList.js'
+import { type Loader } from '../sources/modrinth/loaders.js'
 import { allPluginSources } from '../sources/pluginSource.js'
 import { output } from '../utils/output.js'
 import installPlugins from './installPlugins.js'
 
-export default async function updatePlugins(gameVersion?: string, featured?: boolean) {
+export default async function updatePlugins(loader: Loader, gameVersion?: string, featured?: boolean) {
   const existingPlugins = await loadPlugins()
 
   const newPlugins: Plugins = {
+    version: 1,
     added: {},
     all: {
       modrinth: {},
@@ -25,6 +27,7 @@ export default async function updatePlugins(gameVersion?: string, featured?: boo
     const { changelog, removed, added, changed } = await pluginSource.update(
       existingPlugins,
       newPlugins,
+      loader,
       gameVersion,
       featured,
     )

@@ -1,18 +1,23 @@
 import { type AllPlugins, type Plugin as BasePlugin, Plugins } from '../pluginList.js'
+import { type Loader } from './modrinth/loaders.js'
 import modrinthSource from './modrinth/modrinthSource.js'
+import { type PluginEntry } from './pluginEntry.js'
 import urlSource from './url/urlSource.js'
 
 export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   readonly prefix: 'modrinth' | 'url'
 
-  search(query: string): Promise<void>
-  findPlugin(query: string, plugins: AllPlugins): { plugin: Plugin; id: string } | null
+  search(query: string, loader: Loader, gameVersion?: string): Promise<void>
+  findPlugin(query: string, plugins: AllPlugins): Promise<{ plugin: Plugin; id: string } | null>
   viewPlugins(plugins: { plugin: Plugin; id: string }[], last: boolean): Promise<void>
+  /** This source's plugins in `plugins`, for listing */
+  listEntries(plugins: Plugins): PluginEntry[]
   removePlugin(plugins: Plugins, allToRemove: { plugin: BasePlugin; id: string }[]): void
   install(plugins: AllPlugins): Promise<void>
   update(
     existingPlugins: Plugins,
     newPlugins: Plugins,
+    loader: Loader,
     gameVersion?: string,
     featured?: boolean,
   ): Promise<{
@@ -21,7 +26,14 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
     added: string[]
     changed: { identifier: string; oldVersion: string; newVersion: string }[]
   }>
-  addPlugin(plugins: Plugins, pluginIndicator: string, gameVersion?: string, featured?: boolean): Promise<void>
+  /** Resolves to whether `plugins` was changed */
+  addPlugin(
+    plugins: Plugins,
+    pluginIndicator: string,
+    loader: Loader,
+    gameVersion?: string,
+    featured?: boolean,
+  ): Promise<boolean>
 }
 
 export const allPluginSources: PluginSource[] = [modrinthSource, urlSource]
