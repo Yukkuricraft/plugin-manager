@@ -415,7 +415,7 @@ export async function getPluginVersion(
       projectVersion = candidates[0]
     } else {
       projectVersion = await prompts.select({
-        message: `Found multiple ${loader} builds of version ${targetVersion}`,
+        message: `Found multiple ${loader} builds of ${output.pluginName(projectName)} ${targetVersion}`,
         choices: candidates.map((v) => ({ name: v.name, value: v })),
       })
     }
@@ -458,7 +458,7 @@ export async function getPluginVersion(
       projectVersion = all[0]
     } else {
       projectVersion = await prompts.select({
-        message: 'Found multiple candidate versions',
+        message: `Found multiple candidate versions of ${output.pluginName(projectName)}`,
         choices: all.map((v) => ({ name: v.name, value: v })),
       })
     }
