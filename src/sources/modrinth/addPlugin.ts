@@ -4,7 +4,7 @@ import { output } from '../../utils/output.js'
 import type { AddFlags } from '../pluginSource.js'
 import client from './client.js'
 import { addRequiredDependencies, formatDependencyInfo, getPluginVersion } from './utils.js'
-import { MissingDataError, RequestError } from '../../errors.js'
+import { MissingDataError, RequestError, UserError } from '../../errors.js'
 
 export default async function addPlugin(plugins: Plugins, pluginIndicator: string, flags: AddFlags) {
   let plugin
@@ -54,6 +54,13 @@ export default async function addPlugin(plugins: Plugins, pluginIndicator: strin
   }
   const project = projectRes.data
 
+  const rule = plugins.config.substitutes?.[project.id]
+  if (rule) {
+    throw new UserError(
+      `${rule.slug} is substituted by ${rule.substituteSlug} in plugins.json, so it can't be added. Run \`yarn run-cli substitute --remove ${rule.slug}\` first to add it`,
+    )
+  }
+
   // Resolved per plugin, since a loader override recorded on an existing entry only applies to that plugin
   const existing = plugins.all.modrinth[project.id]
   const resolved = resolveTarget(plugins.config, existing?.overrides, flags)
@@ -69,6 +76,8 @@ export default async function addPlugin(plugins: Plugins, pluginIndicator: strin
     displayFor: plugin,
     gameVersion: resolved.gameVersion,
     featured: flags.featured,
+    // Dependencies already in the lockfile are reused as they are. Moving them to newer builds is update's job
+    dependencyContext: { substitutes: plugins.config.substitutes, locked: plugins.all.modrinth },
   })
 
   if (!project.slug || !projectVersion.version_number) {
