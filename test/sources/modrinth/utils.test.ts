@@ -13,8 +13,9 @@ import {
   getPluginVersion,
 } from '../../../src/sources/modrinth/utils.js'
 
-const { get } = vi.hoisted(() => ({ get: vi.fn() }))
+const { get, select } = vi.hoisted(() => ({ get: vi.fn(), select: vi.fn() }))
 vi.mock('../../../src/sources/modrinth/client.js', () => ({ default: { GET: get } }))
+vi.mock('@inquirer/prompts', () => ({ select }))
 
 function requiredDep(projectId: string, version: string): DependencyInfo {
   return {
@@ -134,6 +135,38 @@ describe('getPluginVersion', () => {
       message:
         'No paper versions found for plugin someplugin supporting Minecraft 1.21.4, among featured versions only',
     })
+  })
+
+  it('names the project when asking which candidate version to use', async () => {
+    get.mockResolvedValue({
+      data: [
+        {
+          id: 'r',
+          name: '5.12.0',
+          status: 'listed',
+          loaders: ['paper'],
+          version_type: 'release',
+          date_published: '2026-01-01T00:00:00Z',
+          dependencies: [],
+        },
+        {
+          id: 'a',
+          name: '5.9.0-SNAPSHOT',
+          status: 'listed',
+          loaders: ['paper'],
+          version_type: 'alpha',
+          date_published: '2025-01-01T00:00:00Z',
+          dependencies: [],
+        },
+      ],
+    })
+    select.mockImplementation((opts: { choices: { value: unknown }[] }) => Promise.resolve(opts.choices[0].value))
+
+    await getPluginVersion('proj', 'paper', { name: 'viaversion' })
+
+    const { message } = select.mock.calls[0][0] as { message: string }
+    expect(message).toContain('Found multiple candidate versions of')
+    expect(message).toContain('viaversion')
   })
 
   it('names the project by its id when given no name', async () => {
