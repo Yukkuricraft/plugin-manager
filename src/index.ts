@@ -2,6 +2,7 @@ import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
 
 import addPlugins from './commands/addPlugins.js'
+import initPlugins from './commands/initPlugins.js'
 import installPlugins from './commands/installPlugins.js'
 import removePlugins from './commands/removePlugins.js'
 import searchPlugins from './commands/searchPlugins.js'
@@ -9,22 +10,40 @@ import showPlugins from './commands/showPlugins.js'
 import updatePlugins from './commands/updatePlugins.js'
 import viewPlugins from './commands/viewPlugins.js'
 import { MissingDataError, RequestError, UserError, ValidationError } from './errors.js'
-import { allLoaders, desiredLoader } from './sources/modrinth/loaders.js'
+import { allLoaders } from './sources/modrinth/loaders.js'
 import { output } from './utils/output.js'
 
 const pluginSourceDescription =
   'By default, Modrinth is used as a plugin source. This can be made explicit by prefixing the plugin with "modrinth:". You can also prefix the plugin with "url:" to use a URLs instead.'
 const urlSyntaxDescription = 'When adding a plugin from an URL, the correct syntax is "url:<identifier>@<url>"'
-const gameVersionDescription =
-  'Only consider plugin versions supporting this Minecraft version, e.g. "1.21.1". Without it, the newest version is used whichever Minecraft versions it supports. Applies to dependencies too.'
+const addGameVersionDescription =
+  'Resolve against this Minecraft version, e.g. "1.20.4", instead of the one in plugins.json, recording it as an override on the plugin. Applies to dependencies too.'
+const updateGameVersionDescription =
+  'The Minecraft version to update plugins for, e.g. "1.21.4". Asked for if not given, defaulting to the one in plugins.json, which is then updated to match.'
 const featuredDescription =
-  'Only consider plugin versions the author has marked as featured on Modrinth. Does not apply to dependencies.'
+  'Only consider plugin versions the author has marked as featured on Modrinth. Does not apply to dependencies, and is not remembered between runs.'
 const versionSyntaxDescription =
   'To pin a Modrinth plugin to a specific version, use "<plugin>@<version>". The version must exactly match the Modrinth version number. If omitted, the latest matching version is resolved.'
 
 await yargs()
   .scriptName('plugins')
   .usage('$0 <cmd> [args]')
+  .command(
+    'init',
+    'Create plugins.json for a server',
+    (yargs) =>
+      yargs
+        .option('loader', {
+          choices: allLoaders,
+          describe: 'The loader the server runs. Asked for if not given',
+        })
+        .option('game-version', {
+          type: 'string',
+          alias: 'mc-version',
+          describe: 'The Minecraft version the server runs, e.g. "1.21.1". Asked for if not given',
+        }),
+    (argv) => initPlugins({ loader: argv.loader, gameVersion: argv.gameVersion }),
+  )
   .command(
     'search <plugin>',
     'Search for plugins',
@@ -33,16 +52,27 @@ await yargs()
         .positional('plugin', { type: 'string', describe: 'Query to search with', demandOption: true })
         .option('loader', {
           choices: allLoaders,
-          default: desiredLoader,
           describe:
-            'Only show plugins that run on this loader, including those built for a loader it is compatible with',
+            'Only show plugins that run on this loader, including those built for a loader it is compatible with. Defaults to the loader in plugins.json',
         })
         .option('game-version', {
           type: 'string',
           alias: 'mc-version',
-          describe: 'Only show plugins with a version supporting this Minecraft version, e.g. "1.21.1"',
+          describe:
+            'Only show plugins with a version supporting this Minecraft version, e.g. "1.21.1". Defaults to the Minecraft version in plugins.json',
+        })
+        .option('any-game-version', {
+          type: 'boolean',
+          conflicts: 'game-version',
+          describe:
+            'Show plugins whichever Minecraft versions they support, including ones that lag behind plugins.json',
         }),
-    (argv) => searchPlugins(argv.plugin, argv.loader, argv.gameVersion),
+    (argv) =>
+      searchPlugins(argv.plugin, {
+        loader: argv.loader,
+        gameVersion: argv.gameVersion,
+        anyGameVersion: argv.anyGameVersion,
+      }),
   )
   .command(
     'add <plugin..>',
@@ -55,16 +85,21 @@ await yargs()
           array: true,
           demandOption: true,
         })
+        .option('loader', {
+          choices: allLoaders,
+          describe:
+            'Resolve against this loader instead of the one in plugins.json, recording it as an override on the plugin',
+        })
         .option('game-version', {
           type: 'string',
           alias: 'mc-version',
-          describe: gameVersionDescription,
+          describe: addGameVersionDescription,
         })
         .option('featured', {
           type: 'boolean',
           describe: featuredDescription,
         }),
-    (argv) => addPlugins(argv.plugin, desiredLoader, argv.gameVersion, argv.featured),
+    (argv) => addPlugins(argv.plugin, { loader: argv.loader, gameVersion: argv.gameVersion, featured: argv.featured }),
   )
   .command(
     'view <plugin..>',
@@ -111,13 +146,13 @@ await yargs()
         .option('game-version', {
           type: 'string',
           alias: 'mc-version',
-          describe: gameVersionDescription,
+          describe: updateGameVersionDescription,
         })
         .option('featured', {
           type: 'boolean',
           describe: featuredDescription,
         }),
-    (argv) => updatePlugins(desiredLoader, argv.gameVersion, argv.featured),
+    (argv) => updatePlugins({ gameVersion: argv.gameVersion, featured: argv.featured }),
   )
   .completion()
   .help()

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await */
-import { PluginSource } from '../pluginSource.js'
+import { type OverrideChange, PluginSource } from '../pluginSource.js'
 import { AllPlugins, Plugin, Plugins, UrlPlugin } from '../../pluginList.js'
 import { output } from '../../utils/output.js'
 import { downloadFile, validateUrl } from '../../utils/files.js'
@@ -52,6 +52,7 @@ const urlSource: PluginSource<UrlPlugin> = {
     removed: string[]
     added: string[]
     changed: { identifier: string; oldVersion: string; newVersion: string }[]
+    overrides: OverrideChange[]
   }> {
     // URLs have nothing to check for updates, but newPlugins starts empty, so they're carried over as-is
     for (const [id, plugin] of Object.entries(existingPlugins.all.url)) {
@@ -66,6 +67,7 @@ const urlSource: PluginSource<UrlPlugin> = {
       removed: [],
       added: [],
       changed: [],
+      overrides: [],
     }
   },
   async install(plugins: AllPlugins): Promise<void> {

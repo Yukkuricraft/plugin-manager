@@ -2,6 +2,30 @@
 import fs from 'fs/promises'
 import z from 'zod'
 
+import { allLoaders } from './sources/modrinth/loaders.js'
+import { UserError } from './errors.js'
+
+export const pluginsFileVersion = 2
+export const defaultPluginsPath = './plugins.json'
+
+/** The server a plugins.json is for. Every plugin in it is resolved against this unless it records an override */
+export const serverConfig = z.object({
+  loader: z.enum(allLoaders),
+  gameVersion: z.string(),
+})
+export type ServerConfig = z.infer<typeof serverConfig>
+
+/**
+ * How a plugin was resolved differently from the server configuration. A loader override is sticky, and keeps being
+ * used for that plugin. A Minecraft version override only records that the plugin lags the configuration, and update
+ * tries to bring it up to date every time.
+ */
+export const pluginOverrides = z.object({
+  loader: z.enum(allLoaders).optional(),
+  gameVersion: z.string().optional(),
+})
+export type PluginOverrides = z.infer<typeof pluginOverrides>
+
 export const modrinthPlugin = z.object({
   source: z.literal('modrinth'),
   slug: z.string().nullable(),
@@ -20,6 +44,7 @@ export const modrinthPlugin = z.object({
       return new Set(v)
     },
   }),
+  overrides: pluginOverrides.optional(),
 })
 export type ModrinthPlugin = z.infer<typeof modrinthPlugin>
 
@@ -45,7 +70,8 @@ export const allPlugins = z.object({
 export type AllPlugins = z.infer<typeof allPlugins>
 
 export const plugins = z.object({
-  version: z.literal(1),
+  version: z.literal(pluginsFileVersion),
+  config: serverConfig,
   added: z.record(z.templateLiteral([z.enum(['modrinth', 'url']), ':', z.string()]), z.string()),
   all: allPlugins,
 })
@@ -65,26 +91,54 @@ function sortObj<A extends object>(obj: A): A {
   return res
 }
 
-export async function loadPlugins(): Promise<Plugins> {
+export async function pluginsExist(path = defaultPluginsPath): Promise<boolean> {
   try {
-    const str = await fs.readFile('./plugins.json')
-    const raw: z.input<typeof plugins> = JSON.parse(str.toString())
-    return plugins.decode(raw)
-  } catch (e) {
-    if (typeof e === 'object' && e && 'code' in e && e.code === 'ENOENT') {
-      return {
-        version: 1,
-        added: {},
-        all: {
-          modrinth: {},
-          url: {},
-        },
-      }
-    } else throw e
+    await fs.access(path)
+    return true
+  } catch {
+    return false
   }
 }
 
-export async function writePlugins(pluginsObj: Plugins) {
+export async function loadPlugins(path = defaultPluginsPath): Promise<Plugins> {
+  let str: string
+  try {
+    str = await fs.readFile(path, 'utf-8')
+  } catch (e) {
+    if (typeof e === 'object' && e && 'code' in e && e.code === 'ENOENT') {
+      throw new UserError('No plugins.json found. Run `yarn run-cli init` to create one')
+    }
+    throw e
+  }
+
+  let raw: unknown
+  try {
+    raw = JSON.parse(str)
+  } catch (e) {
+    throw new UserError(`plugins.json is not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
+  }
+
+  // Checked before parsing, so an old file gets a message saying what to do rather than a schema error
+  const version = typeof raw === 'object' && raw !== null && 'version' in raw ? raw.version : undefined
+  if (version !== pluginsFileVersion) {
+    const found = typeof version === 'number' ? `version ${version}` : 'in an unrecognised format'
+    throw new UserError(
+      `plugins.json is ${found}, but this needs version ${pluginsFileVersion}. Delete plugins.json and run \`yarn run-cli init\``,
+    )
+  }
+
+  try {
+    return plugins.decode(raw as z.input<typeof plugins>)
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      const message = 'prettifyError' in z ? z.prettifyError(e) : e.message
+      throw new UserError(`plugins.json doesn't match the expected format: ${message}`)
+    }
+    throw e
+  }
+}
+
+export async function writePlugins(pluginsObj: Plugins, path = defaultPluginsPath) {
   pluginsObj = sortObj(pluginsObj)
-  await fs.writeFile('./plugins.json', JSON.stringify(plugins.encode(pluginsObj), null, 2))
+  await fs.writeFile(path, JSON.stringify(plugins.encode(pluginsObj), null, 2))
 }
