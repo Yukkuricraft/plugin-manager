@@ -8,10 +8,23 @@ import { UserError } from './errors.js'
 export const pluginsFileVersion = 2
 export const defaultPluginsPath = './plugins.json'
 
+/**
+ * A declaration that one Modrinth project satisfies every required dependency on another, such as FastAsyncWorldEdit
+ * standing in for WorldEdit. Stored in config.substitutes, keyed by the project ID of the project being replaced. The
+ * slugs are only there so plugins.json stays readable, and so messages can name both projects without a request.
+ */
+export const substituteRule = z.object({
+  slug: z.string(),
+  substitute: z.string(),
+  substituteSlug: z.string(),
+})
+export type SubstituteRule = z.infer<typeof substituteRule>
+
 /** The server a plugins.json is for. Every plugin in it is resolved against this unless it records an override */
 export const serverConfig = z.object({
   loader: z.enum(allLoaders),
   gameVersion: z.string(),
+  substitutes: z.record(z.string(), substituteRule).optional(),
 })
 export type ServerConfig = z.infer<typeof serverConfig>
 
@@ -76,6 +89,41 @@ export const plugins = z.object({
   all: allPlugins,
 })
 export type Plugins = z.infer<typeof plugins>
+
+/** Whether a lockfile entry is one the user added, rather than one pulled in as a dependency */
+export function isAddedModrinthPlugin(plugins: Plugins, entry: ModrinthPlugin): boolean {
+  return entry.slug !== null && `modrinth:${entry.slug}` in plugins.added
+}
+
+/** The slugs of the lockfile entries that depend on `entry`, sorted. Entries without a slug are named by their ID */
+export function dependantNames(all: AllModrinthPlugins, entry: ModrinthPlugin): string[] {
+  return [...entry.dependedOnBy].map((id) => all[id]?.slug ?? id).sort()
+}
+
+/**
+ * Throws if the lockfile contains a project that a substitute rule replaces, since both it and its substitute would
+ * then be installed. The commands never lock such a project, so this catches a plugins.json edited by hand, or a path
+ * the commands missed. install runs it before touching the plugins folder.
+ */
+export function assertNoSubstitutedPluginsLocked(plugins: Plugins) {
+  const problems = Object.entries(plugins.config.substitutes ?? {}).flatMap(([id, rule]) => {
+    const entry = plugins.all.modrinth[id]
+    if (!entry) return []
+
+    const dependants = dependantNames(plugins.all.modrinth, entry)
+    if (isAddedModrinthPlugin(plugins, entry) || dependants.length === 0) {
+      return [
+        `${rule.slug} is in plugins.json, but it's substituted by ${rule.substituteSlug}. Run \`yarn run-cli remove ${rule.slug}\``,
+      ]
+    }
+    const names = dependants.join(', ')
+    return [
+      `${rule.slug} is in plugins.json as a dependency of ${names}, but it's substituted by ${rule.substituteSlug}. ` +
+        `Remove and re-add ${names} to pick up ${rule.substituteSlug}, or run \`yarn run-cli substitute --remove ${rule.slug}\``,
+    ]
+  })
+  if (problems.length > 0) throw new UserError(`Refusing to install:\n${problems.join('\n')}`)
+}
 
 function sortObj<A extends object>(obj: A): A {
   const res = {} as A
