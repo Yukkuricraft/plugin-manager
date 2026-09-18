@@ -222,6 +222,32 @@ describe('getDependencyInfo', () => {
     },
   )
 
+  it.each(['optional', 'incompatible'] as const)(
+    'resolves no version for $type dependencies, so a project with no build for this server is fine',
+    async (type) => {
+      // "clientmod" isn't in the catalogue, so a version lookup would find nothing and throw
+      const info = await getDependencyInfo(
+        { project_id: 'clientmod', version_id: null, dependency_type: type },
+        'paper',
+        '1.21.4',
+      )
+
+      expect(info).toEqual({ type, projectSlug: 'clientmod', projectId: 'clientmod', versionId: null })
+      expect(requests().map((r) => r.path)).toEqual(['/project/{id|slug}'])
+    },
+  )
+
+  it('keeps the pinned build of an incompatible dependency, without fetching it', async () => {
+    const info = await getDependencyInfo(
+      { project_id: 'lib', version_id: 'lib-1.0.0', dependency_type: 'incompatible' },
+      'paper',
+      '1.21.4',
+    )
+
+    expect(info).toEqual({ type: 'incompatible', projectSlug: 'lib', projectId: 'lib', versionId: 'lib-1.0.0' })
+    expect(requests().map((r) => r.path)).toEqual(['/project/{id|slug}'])
+  })
+
   it('applies rules to the dependencies of a resolved plugin', async () => {
     const { dependencies } = await getPluginVersion('craftbook', 'paper', {
       gameVersion: '1.21.4',
