@@ -71,8 +71,9 @@ server's loader.
 
 ### Dependencies
 
-`add` reuses any dependency already in `plugins.json` instead of looking it up again, so adding a plugin never changes
-the version of one that's already installed. `update` is what moves dependencies to newer versions.
+`add` reuses any dependency already in `plugins.json` instead of looking it up again, so adding a plugin doesn't move
+dependencies already in `plugins.json` to newer versions, unless a plugin requires a specific newer build. `update` is
+what moves dependencies to newer versions.
 
 ### Substituting one plugin for another
 
@@ -89,7 +90,8 @@ there is one. WorldEdit itself can't be added while the substitution exists, and
 `plugins.json` contains it anyway.
 
 A substitution can't be declared while the plugin being replaced is installed, since both would end up installed. Remove
-it, or the plugins that depend on it, first. A plugin can only be part of one substitution.
+it first; or, if other plugins pulled it in, remove them, declare the substitution, then add them back so they pick up
+the substitute. A plugin can only be part of one substitution.
 
 To drop a substitution:
 
@@ -97,7 +99,7 @@ To drop a substitution:
 yarn run-cli substitute --remove worldedit
 ```
 
-Plugins already using the substitute keep it until the next `update`.
+Plugins already using the substitute keep it until they're next added or updated.
 
 ### Updating
 

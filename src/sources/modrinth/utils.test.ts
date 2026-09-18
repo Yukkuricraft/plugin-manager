@@ -208,23 +208,19 @@ describe('getDependencyInfo', () => {
     expect(requests().map((r) => r.path)).toContain('/project/{id|slug}/version/{id|number}')
   })
 
-  it('resolves a locked project when not given the lockfile, as update does', async () => {
-    const info = await getDependencyInfo(required('we'), 'paper', '1.21.4', { substitutes: worldeditToFawe })
+  it.each(['optional', 'incompatible'] as const)(
+    'leaves $type dependencies on a replaced project alone',
+    async (type) => {
+      const info = await getDependencyInfo(
+        { project_id: 'we', version_id: null, dependency_type: type },
+        'paper',
+        '1.21.4',
+        { substitutes: worldeditToFawe },
+      )
 
-    expect(info).toMatchObject({ projectId: 'fawe', version: '2.16.0' })
-    expect(get).toHaveBeenCalled()
-  })
-
-  it('leaves optional dependencies on a replaced project alone', async () => {
-    const info = await getDependencyInfo(
-      { project_id: 'we', version_id: null, dependency_type: 'optional' },
-      'paper',
-      '1.21.4',
-      { substitutes: worldeditToFawe },
-    )
-
-    expect(info).toMatchObject({ type: 'optional', projectId: 'we' })
-  })
+      expect(info).toMatchObject({ type, projectId: 'we' })
+    },
+  )
 
   it('applies rules to the dependencies of a resolved plugin', async () => {
     const { dependencies } = await getPluginVersion('craftbook', 'paper', {

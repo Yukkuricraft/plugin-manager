@@ -21,7 +21,7 @@ export default async function substitutePlugins(
     output.success(`Removed the substitution ${rule.slug} → ${rule.substituteSlug}`)
     if (plugins.all.modrinth[rule.substitute]) {
       output.info(
-        `Plugins using ${rule.substituteSlug} in place of ${rule.slug} keep it until the next update, which resolves ${rule.slug} for them again`,
+        `Plugins using ${rule.substituteSlug} in place of ${rule.slug} keep it until they're next added or updated`,
       )
     }
     return

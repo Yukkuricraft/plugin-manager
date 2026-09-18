@@ -83,7 +83,7 @@ export async function getDependencyInfo(
       if (versionId) {
         // The pin names a build of the replaced project, which doesn't exist under the substitute
         output.warning(
-          `A dependency pins a version of ${rule.slug}, which is substituted by ${rule.substituteSlug}. Using the latest compatible ${rule.substituteSlug} instead`,
+          `A dependency pins a version of ${rule.slug}, which is substituted by ${rule.substituteSlug}. Using ${rule.substituteSlug} instead`,
         )
         versionId = null
       }
