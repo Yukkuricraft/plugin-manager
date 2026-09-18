@@ -11,6 +11,8 @@ export default class ModrinthPluginEntry implements PluginEntry {
     readonly plugin: ModrinthPlugin,
     /** Names of the plugins that depend on this one */
     readonly requiredBy: string[],
+    /** Slug of the project this one is used in place of, per a substitute rule in plugins.json */
+    readonly substitutes?: string,
   ) {}
 
   get size() {
@@ -42,6 +44,7 @@ export default class ModrinthPluginEntry implements PluginEntry {
       title: this.orphaned ? `${this.name} ${output.dim('(orphaned)')}` : this.name,
       version: this.plugin.version,
       overrides: this.plugin.overrides,
+      substitutes: this.substitutes,
       filename: this.plugin.filename,
       size: this.plugin.size,
       publishedAt: this.plugin.publishedAt,
@@ -52,8 +55,10 @@ export default class ModrinthPluginEntry implements PluginEntry {
   private note() {
     const overrides = formatOverrides(this.plugin.overrides)
     const override = overrides ? ` ${chalk.yellowBright(`[override: ${overrides}]`)}` : ''
-    if (this.orphaned) return `${override} ${output.dim('(orphaned)')}`
-    if (this.requiredBy.length > 0) return `${override} ${output.dim(`← required by ${this.requiredBy.join(', ')}`)}`
-    return override
+    const substitutes = this.substitutes ? ` ${chalk.cyanBright(`[substitutes ${this.substitutes}]`)}` : ''
+    const tags = `${override}${substitutes}`
+    if (this.orphaned) return `${tags} ${output.dim('(orphaned)')}`
+    if (this.requiredBy.length > 0) return `${tags} ${output.dim(`← required by ${this.requiredBy.join(', ')}`)}`
+    return tags
   }
 }

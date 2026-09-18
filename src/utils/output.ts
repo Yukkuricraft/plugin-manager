@@ -137,6 +137,7 @@ export const output = {
     publishedAt?: string
     mcVersions?: string[]
     overrides?: PluginOverrides
+    substitutes?: string
     categories?: string[]
     dependencies?: string[]
     requiredBy?: string[]
@@ -172,6 +173,9 @@ export const output = {
     const overrides = formatOverrides(data.overrides)
     if (overrides) {
       console.log(`   ${this.label('Override')} ${chalk.yellowBright(overrides)}`)
+    }
+    if (data.substitutes) {
+      console.log(`   ${this.label('Substitutes')} ${chalk.cyanBright(data.substitutes)}`)
     }
     if (data.filename) {
       const size = data.size === undefined ? '' : ` ${this.dim(`(${formatSize(data.size)})`)}`
