@@ -39,7 +39,8 @@ yarn run-cli init --loader paper --game-version 1.21.1
 `init` won't overwrite an existing `plugins.json`. A `plugins.json` made before `init` existed is rejected: delete it
 and run `init`.
 
-`show` prints the loader and Minecraft version above the plugin list, and marks each plugin carrying an override.
+`show` prints the loader and Minecraft version above the plugin list, along with any substitutions, and marks each
+plugin carrying an override or standing in for another.
 
 ### Pinning a version
 
