@@ -7,15 +7,19 @@ yarn run-cli --help
 plugins <cmd> [args]
 
 Commands:
-  plugins init               Create plugins.json for a server
-  plugins search <plugin>    Search for plugins
-  plugins add <plugin..>     Add plugins
-  plugins view <plugin..>    View information about existing plugins
-  plugins show               Show a summary of all plugins in plugins.json
-  plugins remove <plugin..>  Remove plugins
-  plugins install            Install plugins
-  plugins update             Update plugins
-  plugins completion         generate completion script
+  plugins init                              Create plugins.json for a server
+  plugins search <plugin>                   Search for plugins
+  plugins add <plugin..>                    Add plugins
+  plugins view <plugin..>                   View information about existing
+                                            plugins
+  plugins show                              Show a summary of all plugins in
+                                            plugins.json
+  plugins remove <plugin..>                 Remove plugins
+  plugins substitute <plugin> [substitute]  Use one plugin wherever another is
+                                            required
+  plugins install                           Install plugins
+  plugins update                            Update plugins
+  plugins completion                        generate completion script
 
 Options:
   --help     Show help                                                 [boolean]
@@ -68,6 +72,31 @@ server's loader.
 
 `add` reuses any dependency already in `plugins.json` instead of looking it up again, so adding a plugin never changes
 the version of one that's already installed. `update` is what moves dependencies to newer versions.
+
+### Substituting one plugin for another
+
+Some plugins can replace another. FastAsyncWorldEdit, for example, is a fork of WorldEdit and works wherever WorldEdit
+is required. Modrinth doesn't record this, so adding a plugin that depends on WorldEdit would install WorldEdit
+alongside FastAsyncWorldEdit. Declare the substitution to prevent that:
+
+```
+yarn run-cli substitute worldedit fastasyncworldedit
+```
+
+From then on, every plugin that requires WorldEdit gets FastAsyncWorldEdit instead, using the one already installed if
+there is one. WorldEdit itself can't be added while the substitution exists, and `install` refuses to run if
+`plugins.json` contains it anyway.
+
+A substitution can't be declared while the plugin being replaced is installed, since both would end up installed. Remove
+it, or the plugins that depend on it, first. A plugin can only be part of one substitution.
+
+To drop a substitution:
+
+```
+yarn run-cli substitute --remove worldedit
+```
+
+Plugins already using the substitute keep it until the next `update`.
 
 ### Updating
 

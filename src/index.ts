@@ -7,6 +7,7 @@ import installPlugins from './commands/installPlugins.js'
 import removePlugins from './commands/removePlugins.js'
 import searchPlugins from './commands/searchPlugins.js'
 import showPlugins from './commands/showPlugins.js'
+import substitutePlugins from './commands/substitutePlugins.js'
 import updatePlugins from './commands/updatePlugins.js'
 import viewPlugins from './commands/viewPlugins.js'
 import { MissingDataError, RequestError, UserError, ValidationError } from './errors.js'
@@ -136,6 +137,26 @@ await yargs()
         demandOption: true,
       }),
     (argv) => removePlugins(argv.plugin),
+  )
+  .command(
+    'substitute <plugin> [substitute]',
+    'Use one plugin wherever another is required',
+    (yargs) =>
+      yargs
+        .positional('plugin', {
+          type: 'string',
+          describe: 'The Modrinth plugin to replace, by slug or id',
+          demandOption: true,
+        })
+        .positional('substitute', {
+          type: 'string',
+          describe: 'The Modrinth plugin to use in its place, by slug or id',
+        })
+        .option('remove', {
+          type: 'boolean',
+          describe: 'Remove the substitution for <plugin> instead',
+        }),
+    (argv) => substitutePlugins(argv.plugin, argv.substitute, { remove: argv.remove }),
   )
   .command('install', 'Install plugins', {}, () => installPlugins())
   .command(
