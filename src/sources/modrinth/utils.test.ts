@@ -3,7 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NoCompatibleVersionError } from '../../errors.js'
 import { type AllModrinthPlugins } from '../../pluginList.js'
 import { modrinthEntry } from '../../testFixtures.js'
-import { addRequiredDependencies, carryOverPlugins, type DependencyInfo, getPluginVersion } from './utils.js'
+import { output } from '../../utils/output.js'
+import {
+  addRequiredDependencies,
+  carryOverPlugins,
+  type DependencyContext,
+  type DependencyInfo,
+  getDependencyInfo,
+  getPluginVersion,
+} from './utils.js'
 
 const { get } = vi.hoisted(() => ({ get: vi.fn() }))
 vi.mock('./client.js', () => ({ default: { GET: get } }))
@@ -22,6 +30,73 @@ function requiredDep(projectId: string, version: string): DependencyInfo {
     publishedAt: '2026-01-01T00:00:00Z',
     dependencies: [],
   }
+}
+
+type Dependency = { project_id: string; version_id: string | null; dependency_type: 'required' | 'optional' }
+
+function version(projectId: string, versionNumber: string, dependencies: Dependency[] = []) {
+  return {
+    id: `${projectId}-${versionNumber}`,
+    project_id: projectId,
+    name: `${projectId} ${versionNumber}`,
+    version_number: versionNumber,
+    version_type: 'release',
+    status: 'listed',
+    loaders: ['paper'],
+    game_versions: ['1.21.4'],
+    date_published: '2026-01-01T00:00:00Z',
+    dependencies,
+    files: [
+      {
+        primary: true,
+        filename: `${projectId}-${versionNumber}.jar`,
+        size: 1,
+        url: `https://example.invalid/${projectId}-${versionNumber}.jar`,
+        hashes: { sha1: `sha1-${projectId}`, sha512: `sha512-${projectId}` },
+      },
+    ],
+  }
+}
+
+// Every version each fake project has. craftbook requires "we" (WorldEdit), which a rule replaces with "fawe"
+const catalogue: Record<string, ReturnType<typeof version>[]> = {
+  craftbook: [version('craftbook', '5.0.0', [{ project_id: 'we', version_id: null, dependency_type: 'required' }])],
+  we: [version('we', '7.4.5')],
+  fawe: [version('fawe', '2.16.0')],
+  lib: [version('lib', '1.0.0')],
+}
+
+type FakeInit = { params: { path: Record<string, string> } }
+
+/** Stands in for the Modrinth client's GET, answering from the catalogue. Unknown endpoints throw */
+function fakeModrinth(path: string, init: FakeInit) {
+  const id = init.params.path['id|slug']
+  switch (path) {
+    case '/project/{id|slug}':
+      return Promise.resolve({ data: { id, slug: id } })
+    case '/project/{id|slug}/version':
+      return Promise.resolve({ data: catalogue[id] ?? [] })
+    case '/project/{id|slug}/version/{id|number}':
+      return Promise.resolve({ data: (catalogue[id] ?? []).find((v) => v.id === init.params.path['id|number']) })
+    default:
+      throw new Error(`Unexpected request to ${path}`)
+  }
+}
+
+/** The endpoint and project of every request made so far */
+function requests() {
+  return get.mock.calls.map(([path, init]) => ({
+    path: path as string,
+    project: (init as FakeInit).params.path['id|slug'],
+  }))
+}
+
+const worldeditToFawe: DependencyContext['substitutes'] = {
+  we: { slug: 'worldedit', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' },
+}
+
+function required(projectId: string, versionId: string | null = null) {
+  return { project_id: projectId, version_id: versionId, dependency_type: 'required' as const }
 }
 
 describe('getPluginVersion', () => {
@@ -67,6 +142,101 @@ describe('getPluginVersion', () => {
   })
 })
 
+describe('getDependencyInfo', () => {
+  beforeEach(() => {
+    get.mockReset()
+    get.mockImplementation(fakeModrinth)
+  })
+
+  it('resolves the substitute for a required dependency on a replaced project', async () => {
+    const info = await getDependencyInfo(required('we'), 'paper', '1.21.4', { substitutes: worldeditToFawe })
+
+    expect(info).toMatchObject({ type: 'required', projectId: 'fawe', version: '2.16.0' })
+    expect(requests().map((r) => r.project)).not.toContain('we')
+  })
+
+  it('drops a version pin on a replaced project, with a warning', async () => {
+    const warning = vi.spyOn(output, 'warning').mockImplementation(() => undefined)
+
+    const info = await getDependencyInfo(required('we', 'we-7.4.5'), 'paper', '1.21.4', {
+      substitutes: worldeditToFawe,
+    })
+
+    expect(info).toMatchObject({ type: 'required', projectId: 'fawe', version: '2.16.0' })
+    expect(warning).toHaveBeenCalledWith(expect.stringContaining('fastasyncworldedit'))
+    expect(requests().map((r) => r.path)).not.toContain('/project/{id|slug}/version/{id|number}')
+  })
+
+  it('reuses a locked dependency without making any request', async () => {
+    const locked: AllModrinthPlugins = {
+      fawe: modrinthEntry({ slug: 'fastasyncworldedit', version: '2.15.4', versionId: 'v', filename: 'FAWE.jar' }),
+    }
+
+    const info = await getDependencyInfo(required('fawe'), 'paper', '1.21.4', { locked })
+
+    expect(get).not.toHaveBeenCalled()
+    expect(info).toEqual({
+      type: 'required',
+      projectSlug: 'fastasyncworldedit',
+      projectId: 'fawe',
+      version: '2.15.4',
+      versionId: 'v',
+      sha512: null,
+      sha1: null,
+      size: 1,
+      filename: 'FAWE.jar',
+      publishedAt: '2025-01-01T00:00:00Z',
+      dependencies: [],
+    })
+  })
+
+  it('reuses a locked substitute', async () => {
+    const locked: AllModrinthPlugins = { fawe: modrinthEntry({ slug: 'fastasyncworldedit', version: '2.15.4' }) }
+
+    const info = await getDependencyInfo(required('we'), 'paper', '1.21.4', { substitutes: worldeditToFawe, locked })
+
+    expect(get).not.toHaveBeenCalled()
+    expect(info).toMatchObject({ projectId: 'fawe', version: '2.15.4' })
+  })
+
+  it('still fetches a pinned dependency that is locked', async () => {
+    const locked: AllModrinthPlugins = { lib: modrinthEntry({ slug: 'lib', version: '0.9.0' }) }
+
+    const info = await getDependencyInfo(required('lib', 'lib-1.0.0'), 'paper', '1.21.4', { locked })
+
+    expect(info).toMatchObject({ projectId: 'lib', version: '1.0.0' })
+    expect(requests().map((r) => r.path)).toContain('/project/{id|slug}/version/{id|number}')
+  })
+
+  it('resolves a locked project when not given the lockfile, as update does', async () => {
+    const info = await getDependencyInfo(required('we'), 'paper', '1.21.4', { substitutes: worldeditToFawe })
+
+    expect(info).toMatchObject({ projectId: 'fawe', version: '2.16.0' })
+    expect(get).toHaveBeenCalled()
+  })
+
+  it('leaves optional dependencies on a replaced project alone', async () => {
+    const info = await getDependencyInfo(
+      { project_id: 'we', version_id: null, dependency_type: 'optional' },
+      'paper',
+      '1.21.4',
+      { substitutes: worldeditToFawe },
+    )
+
+    expect(info).toMatchObject({ type: 'optional', projectId: 'we' })
+  })
+
+  it('applies rules to the dependencies of a resolved plugin', async () => {
+    const { dependencies } = await getPluginVersion('craftbook', 'paper', {
+      gameVersion: '1.21.4',
+      dependencyContext: { substitutes: worldeditToFawe },
+    })
+
+    expect(dependencies).toHaveLength(1)
+    expect(dependencies[0]).toMatchObject({ type: 'required', projectId: 'fawe' })
+  })
+})
+
 describe('addRequiredDependencies', () => {
   it('keeps the overrides of an entry it replaces with a newer build', () => {
     const plugins: AllModrinthPlugins = {
@@ -85,6 +255,37 @@ describe('addRequiredDependencies', () => {
 
     expect(plugins.worldedit.version).toBe('7.5.0')
     expect(plugins.worldedit.dependedOnBy).toEqual(new Set(['worldguard']))
+  })
+
+  it('leaves a reused locked entry as it is, only recording the dependant', async () => {
+    get.mockReset().mockImplementation(fakeModrinth)
+    const plugins: AllModrinthPlugins = {
+      fawe: modrinthEntry({ slug: 'fastasyncworldedit', version: '2.15.4', sha512: 'locked-hash' }),
+    }
+    const dep = await getDependencyInfo(required('fawe'), 'paper', '1.21.4', { locked: plugins })
+    addRequiredDependencies(plugins, [{ dep, dependant: 'craftbook' }])
+
+    expect(plugins.fawe.version).toBe('2.15.4')
+    expect(plugins.fawe.sha512).toBe('locked-hash')
+    expect(plugins.fawe.dependedOnBy).toEqual(new Set(['craftbook']))
+  })
+
+  it('keeps the dependants and overrides of a reused entry whose version is not semver', async () => {
+    get.mockReset().mockImplementation(fakeModrinth)
+    const plugins: AllModrinthPlugins = {
+      snap: modrinthEntry({
+        slug: 'snap',
+        version: 'snapshot',
+        dependedOnBy: new Set(['other']),
+        overrides: { loader: 'spigot' },
+      }),
+    }
+    const dep = await getDependencyInfo(required('snap'), 'paper', '1.21.4', { locked: plugins })
+    addRequiredDependencies(plugins, [{ dep, dependant: 'craftbook' }])
+
+    expect(plugins.snap.version).toBe('snapshot')
+    expect(plugins.snap.overrides).toEqual({ loader: 'spigot' })
+    expect(plugins.snap.dependedOnBy).toEqual(new Set(['other', 'craftbook']))
   })
 })
 

@@ -4,7 +4,7 @@ import semver from 'semver'
 
 import type { components } from './modrinth.js'
 
-import { type AllModrinthPlugins, Plugins } from '../../pluginList.js'
+import { type AllModrinthPlugins, Plugins, type SubstituteRule } from '../../pluginList.js'
 import { output, symbols } from '../../utils/output.js'
 import client from './client.js'
 import { type Loader, loaderCandidates, mostLoaderSpecific } from './loaders.js'
@@ -46,10 +46,21 @@ export type DependencyInfo =
   | RequiredDependencyInfo
   | MiscDependencyInfo
 
+/**
+ * What dependency resolution needs beyond the loader and Minecraft version: the substitute rules from plugins.json,
+ * and the lockfile entries to reuse instead of resolving again. Only add passes `locked`, because update re-resolves
+ * every dependency on purpose.
+ */
+export interface DependencyContext {
+  substitutes?: Record<string, SubstituteRule>
+  locked?: AllModrinthPlugins
+}
+
 export async function getDependencyInfo(
   dep: components['schemas']['VersionDependency'],
   loader: Loader,
   gameVersion?: string,
+  ctx: DependencyContext = {},
 ): Promise<DependencyInfo> {
   if (dep.dependency_type === 'embedded') {
     return {
@@ -64,10 +75,46 @@ export async function getDependencyInfo(
     }
   }
 
+  let projectId = dep.project_id
+  let versionId = dep.version_id
+  if (dep.dependency_type === 'required') {
+    const rule = ctx.substitutes?.[projectId]
+    if (rule) {
+      if (versionId) {
+        // The pin names a build of the replaced project, which doesn't exist under the substitute
+        output.warning(
+          `A dependency pins a version of ${rule.slug}, which is substituted by ${rule.substituteSlug}. Using the latest compatible ${rule.substituteSlug} instead`,
+        )
+        versionId = null
+      }
+      projectId = rule.substitute
+    }
+
+    // A pinned dependency skips the lockfile and is fetched, so addRequiredDependencies can still compare
+    // the pinned build against any locked one
+    const locked = versionId ? undefined : ctx.locked?.[projectId]
+    if (locked) {
+      return {
+        type: 'required',
+        projectSlug: locked.slug ?? undefined,
+        projectId,
+        version: locked.version,
+        versionId: locked.versionId,
+        sha512: locked.sha512,
+        sha1: locked.sha1,
+        size: locked.size,
+        filename: locked.filename,
+        publishedAt: locked.publishedAt,
+        // Its own dependencies were locked along with it
+        dependencies: [],
+      }
+    }
+  }
+
   const projectRes = await client.GET('/project/{id|slug}', {
     params: {
       path: {
-        'id|slug': dep.project_id,
+        'id|slug': projectId,
       },
     },
   })
@@ -77,12 +124,12 @@ export async function getDependencyInfo(
 
   let version: components['schemas']['Version']
   let dependencyInfo: DependencyInfo[] | undefined
-  if (dep.version_id) {
+  if (versionId) {
     const versionRes = await client.GET('/project/{id|slug}/version/{id|number}', {
       params: {
         path: {
-          'id|slug': dep.project_id,
-          'id|number': dep.version_id,
+          'id|slug': projectId,
+          'id|number': versionId,
         },
       },
     })
@@ -91,7 +138,11 @@ export async function getDependencyInfo(
     }
     version = versionRes.data
   } else {
-    const ver = await getPluginVersion(dep.project_id, loader, { gameVersion, name: projectRes.data.slug })
+    const ver = await getPluginVersion(projectId, loader, {
+      gameVersion,
+      name: projectRes.data.slug,
+      dependencyContext: ctx,
+    })
     version = ver.projectVersion
     dependencyInfo = ver.dependencies
   }
@@ -118,7 +169,8 @@ export async function getDependencyInfo(
   switch (dep.dependency_type) {
     case 'required': {
       const depInfo = version.dependencies ?? []
-      const deps = dependencyInfo ?? (await Promise.all(depInfo.map((d) => getDependencyInfo(d, loader, gameVersion))))
+      const deps =
+        dependencyInfo ?? (await Promise.all(depInfo.map((d) => getDependencyInfo(d, loader, gameVersion, ctx))))
 
       return {
         type: 'required',
@@ -281,6 +333,7 @@ export async function getPluginVersion(
     featured?: boolean
     fromDate?: undefined
     changelog?: undefined
+    dependencyContext?: DependencyContext
   },
 ): Promise<{
   projectVersion: components['schemas']['Version']
@@ -297,6 +350,7 @@ export async function getPluginVersion(
     featured?: boolean
     fromDate: string
     changelog: true
+    dependencyContext?: DependencyContext
   },
 ): Promise<{
   projectVersion: components['schemas']['Version']
@@ -314,13 +368,14 @@ export async function getPluginVersion(
     featured?: boolean
     fromDate?: string
     changelog?: boolean
+    dependencyContext?: DependencyContext
   },
 ): Promise<{
   projectVersion: components['schemas']['Version']
   dependencies: DependencyInfo[]
   changelog?: [string, string][]
 }> {
-  const { targetVersion, gameVersion, featured, fromDate, changelog, displayFor, name } = opts ?? {}
+  const { targetVersion, gameVersion, featured, fromDate, changelog, displayFor, name, dependencyContext } = opts ?? {}
   // Dependencies pass name rather than displayFor, since displayFor also triggers the "Getting
   // dependencies of" log below, which would otherwise print once per dependency
   const projectName = name ?? displayFor ?? projectId
@@ -425,7 +480,7 @@ export async function getPluginVersion(
       `Getting dependencies of ${output.pluginName(displayFor)} ${output.version(projectVersion.version_number ?? projectVersion.name ?? 'unknown')}`,
     )
   }
-  const depInfos = await Promise.all(deps.map((d) => getDependencyInfo(d, loader, gameVersion)))
+  const depInfos = await Promise.all(deps.map((d) => getDependencyInfo(d, loader, gameVersion, dependencyContext)))
 
   return { projectVersion, dependencies: depInfos, changelog: changelogArr }
 }
