@@ -9,7 +9,13 @@ const { get, select } = vi.hoisted(() => ({ get: vi.fn(), select: vi.fn() }))
 vi.mock('../../../src/sources/modrinth/client.js', () => ({ default: { GET: get } }))
 vi.mock('@inquirer/prompts', () => ({ select }))
 
-function modrinthVersion(projectId: string, versionNumber: string, gameVersions: string[], publishedAt: string) {
+function modrinthVersion(
+  projectId: string,
+  versionNumber: string,
+  gameVersions: string[],
+  publishedAt: string,
+  dependencies: { project_id: string; version_id: string | null; dependency_type: 'required' }[] = [],
+) {
   return {
     id: `${projectId}-${versionNumber}`,
     project_id: projectId,
@@ -21,7 +27,7 @@ function modrinthVersion(projectId: string, versionNumber: string, gameVersions:
     game_versions: gameVersions,
     date_published: publishedAt,
     changelog: `Changes in ${versionNumber}`,
-    dependencies: [],
+    dependencies,
     files: [
       {
         primary: true,
@@ -42,19 +48,29 @@ const catalogue: Record<string, ReturnType<typeof modrinthVersion>[]> = {
     modrinthVersion('cur', '2.0.0', ['1.20.4', '1.21.1'], '2025-06-01T00:00:00Z'),
     modrinthVersion('cur', '2.1.0', ['1.21.4'], '2026-02-01T00:00:00Z'),
   ],
+  needswe: [
+    modrinthVersion('needswe', '1.0.0', ['1.21.4'], '2026-01-01T00:00:00Z', [
+      { project_id: 'we', version_id: null, dependency_type: 'required' },
+    ]),
+  ],
+  we: [modrinthVersion('we', '7.4.5', ['1.21.4'], '2026-01-01T00:00:00Z')],
+  fawe: [modrinthVersion('fawe', '2.16.0', ['1.21.4'], '2026-02-01T00:00:00Z')],
 }
 
 /**
- * Stands in for the real Modrinth client's GET. Only handles the version-list endpoint, since none of these
- * fixtures' versions have dependencies, so that's the only endpoint they ever reach; anything else throws
- * so a test would fail loudly instead of hitting the network. When the request carries a game_versions
- * filter, only versions matching one of the requested Minecraft versions are returned, matching how
- * Modrinth's API behaves.
+ * Stands in for the real Modrinth client's GET. Handles the project endpoint, which dependency resolution calls, and
+ * the version-list endpoint. Anything else throws, so a test fails loudly instead of hitting the network. When the
+ * request carries a game_versions filter, only versions matching one of the requested Minecraft versions are
+ * returned, matching how Modrinth's API behaves.
  */
 function fakeModrinth(
   path: string,
   init: { params: { path: Record<string, string>; query?: { game_versions?: string } } },
 ) {
+  if (path === '/project/{id|slug}') {
+    const id = init.params.path['id|slug']
+    return Promise.resolve({ data: { id, slug: id } })
+  }
   if (path !== '/project/{id|slug}/version') throw new Error(`Unexpected request to ${path}`)
   const versions = catalogue[init.params.path['id|slug']] ?? []
   const filter = init.params.query?.game_versions
@@ -207,5 +223,31 @@ describe('update', () => {
     expect(select).toHaveBeenCalledOnce()
     const { message } = select.mock.calls[0][0] as { message: string }
     expect(message).not.toContain('recorded as lagging')
+  })
+
+  it('resolves a dependency on a replaced project to its substitute', async () => {
+    const existing: Plugins = {
+      version: 2,
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: { we: { slug: 'worldedit', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' } },
+      },
+      added: { 'modrinth:needswe': '1.0.0' },
+      all: {
+        modrinth: {
+          needswe: modrinthEntry({ slug: 'needswe', version: '1.0.0', publishedAt: '2026-01-01T00:00:00Z' }),
+          fawe: modrinthEntry({ slug: 'fawe', version: '2.15.4', dependedOnBy: new Set(['needswe']) }),
+        },
+        url: {},
+      },
+    }
+    const next = retargeted(existing, '1.21.4')
+
+    await update(existing, next, { gameVersion: '1.21.4' })
+
+    expect(Object.keys(next.all.modrinth).sort()).toEqual(['fawe', 'needswe'])
+    expect(next.all.modrinth.fawe.version).toBe('2.16.0')
+    expect(next.all.modrinth.fawe.dependedOnBy).toEqual(new Set(['needswe']))
   })
 })

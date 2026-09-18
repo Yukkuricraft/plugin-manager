@@ -64,6 +64,11 @@ updates keep resolving that plugin against its own loader. A Minecraft version o
 lags, and `update` tries to bring it up to date every time. To drop it, add the plugin again with `--loader` set to the
 server's loader.
 
+### Dependencies
+
+`add` reuses any dependency already in `plugins.json` instead of looking it up again, so adding a plugin never changes
+the version of one that's already installed. `update` is what moves dependencies to newer versions.
+
 ### Updating
 
 `update` asks which Minecraft version to update plugins for, defaulting to the one in `plugins.json`, and updates
