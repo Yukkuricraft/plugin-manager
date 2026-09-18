@@ -36,8 +36,16 @@ export interface RequiredDependencyInfo extends DependencyInfoBase {
   dependencies: DependencyInfo[]
 }
 
-export interface MiscDependencyInfo extends DependencyInfoBase {
+/**
+ * A dependency that's only mentioned, never installed: an optional one, or one the plugin is incompatible with. No
+ * version is resolved for it, since it may have no build for this server at all, such as a client-side mod.
+ */
+export interface MiscDependencyInfo {
   type: 'optional' | 'incompatible'
+  projectSlug: string | undefined
+  projectId: string
+  /** The build the dependency names, if it pins one */
+  versionId: string | null
 }
 
 export type DependencyInfo =
@@ -122,6 +130,17 @@ export async function getDependencyInfo(
     throw new RequestError('Failed to get dependency project', { cause: projectRes.error })
   }
 
+  // Optional and incompatible dependencies are only mentioned, never installed, so no version is resolved for them.
+  // Resolving one fails for a project with no build for this server, such as a client-side mod
+  if (dep.dependency_type === 'optional' || dep.dependency_type === 'incompatible') {
+    return {
+      type: dep.dependency_type,
+      projectSlug: projectRes.data.slug,
+      projectId: projectRes.data.id,
+      versionId: versionId ?? null,
+    }
+  }
+
   let version: components['schemas']['Version']
   let dependencyInfo: DependencyInfo[] | undefined
   if (versionId) {
@@ -166,30 +185,13 @@ export async function getDependencyInfo(
     publishedAt: version.date_published,
   }
 
-  switch (dep.dependency_type) {
-    case 'required': {
-      const depInfo = version.dependencies ?? []
-      const deps =
-        dependencyInfo ?? (await Promise.all(depInfo.map((d) => getDependencyInfo(d, loader, gameVersion, ctx))))
+  const depInfo = version.dependencies ?? []
+  const deps = dependencyInfo ?? (await Promise.all(depInfo.map((d) => getDependencyInfo(d, loader, gameVersion, ctx))))
 
-      return {
-        type: 'required',
-        dependencies: deps,
-        ...baseReturn,
-      }
-    }
-    case 'optional':
-      return {
-        type: 'optional',
-        ...baseReturn,
-      }
-    case 'incompatible':
-      return {
-        type: 'incompatible',
-        ...baseReturn,
-      }
-    default:
-      throw new SanityCheckError(`Unexpected dependency type ${dep.dependency_type satisfies never}`)
+  return {
+    type: 'required',
+    dependencies: deps,
+    ...baseReturn,
   }
 }
 
@@ -310,7 +312,7 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
     }
     case 'optional':
       return chalk.cyanBright(
-        `${symbols.info} Optional dependency on ${info.projectSlug}. Add separately if you want to use this plugin`,
+        `${symbols.info} Optional dependency on ${output.pluginName(info.projectSlug ?? info.projectId)}. Add separately if you want to use this plugin`,
       )
     case 'required': {
       const indentStr = ' '.repeat(indent + 2)
