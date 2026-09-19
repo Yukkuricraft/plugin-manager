@@ -36,7 +36,8 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   /** This source's plugins in `plugins`, for listing */
   listEntries(plugins: Plugins): PluginEntry[]
   removePlugin(plugins: Plugins, allToRemove: { plugin: BasePlugin; id: string }[]): void
-  install(plugins: AllPlugins): Promise<void>
+  /** Downloads this source's plugins into `dir`, which exists and belongs to this source alone */
+  install(plugins: AllPlugins, dir: string): Promise<void>
   update(
     existingPlugins: Plugins,
     newPlugins: Plugins,

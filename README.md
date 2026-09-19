@@ -141,9 +141,12 @@ file, and all installs will be validated against it.
 
 When you install plugins, three folders will be created:
 
-- `managedPlugins` where plugins automatically downloaded go
+- `managedPlugins` where downloaded plugins go, in a folder for each source: `managedPlugins/modrinth` and
+  `managedPlugins/url`. A source only ever changes its own folder, and anything else in `managedPlugins` is deleted.
 - `unmanagedPlugins` where you can put anything that's not managed by the script. Configs go here.
-- `plugins` the contents of `managedPlugins` and `unmanagedPlugins` merged into one folder.
+- `plugins` the contents of each source's folder and of `unmanagedPlugins` merged into one folder. It's only replaced
+  once every download has succeeded, so a failed install leaves the current plugins in place. Files in
+  `unmanagedPlugins` win over downloaded ones with the same name.
 
 ## Developing
 
