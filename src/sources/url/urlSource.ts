@@ -4,11 +4,12 @@ import path from 'node:path'
 
 import { type OverrideChange, PluginSource } from '../pluginSource.js'
 import { AllPlugins, Plugin, Plugins, UrlPlugin } from '../../pluginList.js'
-import { output } from '../../utils/output.js'
-import { downloadFile, validateUrl } from '../../utils/files.js'
-import { UserError, ValidationError } from '../../errors.js'
-import UrlPluginEntry from './urlPluginEntry.js'
+import { formatSize, output } from '../../utils/output.js'
+import { downloadFile } from '../../utils/files.js'
+import { UserError } from '../../errors.js'
 import { hostHeaders } from './hostHeaders.js'
+import { parseUrlQuery, pinUrl } from './pin.js'
+import UrlPluginEntry from './urlPluginEntry.js'
 
 const urlSource: PluginSource<UrlPlugin> = {
   prefix: 'url',
@@ -31,21 +32,20 @@ const urlSource: PluginSource<UrlPlugin> = {
     return Object.entries(plugins.all.url).map(([id, plugin]) => new UrlPluginEntry(id, plugin.url))
   },
   async addPlugin(plugins: Plugins, pluginIndicator: string): Promise<boolean> {
-    const parts = pluginIndicator.split('@')
-    if (parts.length !== 2) throw new ValidationError('Invalid URL format')
-    const [id, url] = parts
-    validateUrl(url)
+    const { id, version, url } = parseUrlQuery(pluginIndicator)
 
-    if (plugins.added[`url:${id}`] === url) {
-      output.info(`Plugin ${output.pluginName(id)} already in added list with the specified URL. Exiting early`)
+    const existing = plugins.all.url[id]
+    if (existing?.url === url && existing.version === version) {
+      output.info(`Plugin ${output.pluginName(id)} is already added with this URL and version. Exiting early`)
       return false
     }
 
-    plugins.added[`url:${id}`] = url
-    plugins.all.url[id] = {
-      source: 'url' as const,
-      url,
-    }
+    const pin = await pinUrl(plugins, id, url)
+    plugins.added[`url:${id}`] = version
+    plugins.all.url[id] = { source: 'url', url, version, ...pin }
+    output.info(
+      `${output.pluginName(id)} ${output.version(version)}: ${pin.filename} (${formatSize(pin.size)}, sha512 ${pin.sha512.slice(0, 8)})`,
+    )
     return true
   },
   async update(

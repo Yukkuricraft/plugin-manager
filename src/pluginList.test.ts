@@ -11,7 +11,7 @@ import {
   pluginsExist,
   writePlugins,
 } from './pluginList.js'
-import { modrinthEntry } from './testFixtures.js'
+import { modrinthEntry, urlEntry } from './testFixtures.js'
 
 let dir: string
 let file: string
@@ -97,6 +97,29 @@ describe('loadPlugins', () => {
     }
     await writePlugins(withRules, file)
     expect(await loadPlugins(file)).toEqual(withRules)
+  })
+
+  it('round-trips a pinned url entry', async () => {
+    const withUrl: Plugins = {
+      ...v2,
+      added: { ...v2.added, 'url:vault': '1.7.3' },
+      all: { ...v2.all, url: { vault: urlEntry({ version: '1.7.3', filename: 'Vault.jar' }) } },
+    }
+    await writePlugins(withUrl, file)
+    expect(await loadPlugins(file)).toEqual(withUrl)
+  })
+
+  it('rejects a url entry without a pin', async () => {
+    await fs.writeFile(
+      file,
+      JSON.stringify({
+        version: 2,
+        config: { loader: 'paper', gameVersion: '1.21.1' },
+        added: { 'url:vault': 'https://files.example/Vault.jar' },
+        all: { modrinth: {}, url: { vault: { source: 'url', url: 'https://files.example/Vault.jar' } } },
+      }),
+    )
+    await expect(loadPlugins(file)).rejects.toThrow("plugins.json doesn't match the expected format")
   })
 })
 

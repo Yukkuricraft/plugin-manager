@@ -16,7 +16,8 @@ import { output } from './utils/output.js'
 
 const pluginSourceDescription =
   'By default, Modrinth is used as a plugin source. This can be made explicit by prefixing the plugin with "modrinth:". You can also prefix the plugin with "url:" to use a URLs instead.'
-const urlSyntaxDescription = 'When adding a plugin from an URL, the correct syntax is "url:<identifier>@<url>"'
+const urlSyntaxDescription =
+  'When adding a plugin from a URL, the syntax is "url:<identifier>@<version>@<url>". The version is a label for the file, such as "1.7.3". The file is downloaded once and pinned by its hash.'
 const addGameVersionDescription =
   'Resolve against this Minecraft version, e.g. "1.20.4", instead of the one in plugins.json, recording it as an override on the plugin. Applies to dependencies too.'
 const updateGameVersionDescription =
