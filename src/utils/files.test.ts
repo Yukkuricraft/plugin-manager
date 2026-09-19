@@ -1,10 +1,11 @@
+import { createHash } from 'node:crypto'
 import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HashMismatchError, RequestError, UserError } from '../errors.js'
-import { downloadFile, fetchWithAuth, type HostTable } from './files.js'
+import { downloadFile, fetchWithAuth, inspectDownload, type HostTable } from './files.js'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -142,5 +143,90 @@ describe('downloadFile', () => {
       downloadFile('https://files.example/a.jar', dir, { id: 'a', filename: 'a.jar', sha512: 'not-the-hash' }),
     ).rejects.toThrow(HashMismatchError)
     expect(await readdir(dir)).toEqual([])
+  })
+})
+
+describe('inspectDownload', () => {
+  // Every JAR starts with the ZIP signature. A plain Uint8Array, since TypeScript won't take a Buffer as a Response body
+  const jar = new Uint8Array([0x50, 0x4b, 0x03, 0x04, ...Buffer.from('rest of the jar')])
+
+  it("returns a JAR's sha512 and size", async () => {
+    fetchMock.mockResolvedValueOnce(respond('https://files.example/Vault.jar', jar))
+
+    const pin = await inspectDownload('https://files.example/Vault.jar', {}, 'vault')
+
+    expect(pin).toEqual({
+      filename: 'Vault.jar',
+      sha512: createHash('sha512').update(jar).digest('hex'),
+      size: jar.length,
+    })
+  })
+
+  it('refuses JSON, saying an API may need an Accept header', async () => {
+    fetchMock.mockResolvedValueOnce(respond('https://api.example/asset', '{"id":573810242}'))
+
+    await expect(inspectDownload('https://api.example/asset', {}, 'remisux')).rejects.toThrow('returned JSON')
+  })
+
+  it('refuses anything else that is not a JAR', async () => {
+    fetchMock.mockResolvedValueOnce(respond('https://files.example/page', '<html>'))
+
+    const error = await inspectDownload('https://files.example/page', {}, 'page').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(UserError)
+    expect((error as Error).message).toContain("didn't return a JAR")
+    expect((error as Error).message).not.toContain('JSON')
+  })
+
+  it("names the file from the server's Content-Disposition first", async () => {
+    fetchMock.mockResolvedValueOnce(
+      respond('https://files.example/Other.jar', jar, {
+        headers: { 'Content-Disposition': 'attachment; filename=RemiSux-0.0.3.jar' },
+      }),
+    )
+
+    const pin = await inspectDownload('https://files.example/Other.jar', {}, 'remisux')
+
+    expect(pin.filename).toBe('RemiSux-0.0.3.jar')
+  })
+
+  it('names the file from the last URL it was redirected to, when that ends in .jar', async () => {
+    fetchMock
+      .mockResolvedValueOnce(redirect('https://api.example/asset', 'https://files.example/dl/Final%20Name.jar'))
+      .mockResolvedValueOnce(respond('https://files.example/dl/Final%20Name.jar', jar))
+
+    const pin = await inspectDownload('https://api.example/asset', {}, 'remisux')
+
+    expect(pin.filename).toBe('Final Name.jar')
+  })
+
+  it('falls back to the given name', async () => {
+    fetchMock.mockResolvedValueOnce(respond('https://api.example/assets/573810242', jar))
+
+    const pin = await inspectDownload('https://api.example/assets/573810242', {}, 'remisux')
+
+    expect(pin.filename).toBe('remisux.jar')
+  })
+
+  it('falls back to the given name when the final URL has an undecodable segment', async () => {
+    fetchMock
+      .mockResolvedValueOnce(redirect('https://api.example/asset', 'https://files.example/%zz.jar'))
+      .mockResolvedValueOnce(respond('https://files.example/%zz.jar', jar))
+
+    const pin = await inspectDownload('https://api.example/asset', {}, 'remisux')
+
+    expect(pin.filename).toBe('remisux.jar')
+  })
+
+  it('falls through to the URL segment when Content-Disposition is malformed', async () => {
+    fetchMock.mockResolvedValueOnce(
+      respond('https://files.example/Vault.jar', jar, {
+        headers: { 'Content-Disposition': 'attachment; filename' },
+      }),
+    )
+
+    const pin = await inspectDownload('https://files.example/Vault.jar', {}, 'remisux')
+
+    expect(pin.filename).toBe('Vault.jar')
   })
 })
