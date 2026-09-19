@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { UserError } from '../../errors.js'
-import { type Plugins, type SubstituteRule } from '../../pluginList.js'
+import { UserError } from '../../../src/errors.js'
+import { type Plugins, type SubstituteRule } from '../../../src/pluginList.js'
 import { modrinthEntry } from '../../testFixtures.js'
-import { declareSubstitute, removeSubstitute } from './substitute.js'
+import { declareSubstitute, removeSubstitute } from '../../../src/sources/modrinth/substitute.js'
 
 const { get } = vi.hoisted(() => ({ get: vi.fn() }))
-vi.mock('./client.js', () => ({ default: { GET: get } }))
+vi.mock('../../../src/sources/modrinth/client.js', () => ({ default: { GET: get } }))
 
 const projects = [
   { id: 'we', slug: 'worldedit' },

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { type Plugins } from '../pluginList.js'
-import showPlugins from './showPlugins.js'
+import { type Plugins } from '../../src/pluginList.js'
+import showPlugins from '../../src/commands/showPlugins.js'
 
 const { loadPlugins } = vi.hoisted(() => ({ loadPlugins: vi.fn() }))
-vi.mock('../pluginList.js', async (importOriginal) => ({
+vi.mock('../../src/pluginList.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   loadPlugins,
 }))

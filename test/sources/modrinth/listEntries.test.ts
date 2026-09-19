@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { type Plugins } from '../../pluginList.js'
+import { type Plugins } from '../../../src/pluginList.js'
 import { modrinthEntry } from '../../testFixtures.js'
-import listEntries from './listEntries.js'
+import listEntries from '../../../src/sources/modrinth/listEntries.js'
 
 const plugins: Plugins = {
   version: 2,

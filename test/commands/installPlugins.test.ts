@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { UserError } from '../errors.js'
-import { type Plugins } from '../pluginList.js'
+import { UserError } from '../../src/errors.js'
+import { type Plugins } from '../../src/pluginList.js'
 import { modrinthEntry } from '../testFixtures.js'
-import installPlugins from './installPlugins.js'
+import installPlugins from '../../src/commands/installPlugins.js'
 
 const { loadPlugins, rm, mkdir, cp, sourceInstall } = vi.hoisted(() => ({
   loadPlugins: vi.fn(),
@@ -14,12 +14,12 @@ const { loadPlugins, rm, mkdir, cp, sourceInstall } = vi.hoisted(() => ({
 }))
 
 // Only loadPlugins is replaced, so the real install-time check runs
-vi.mock('../pluginList.js', async (importOriginal) => ({
+vi.mock('../../src/pluginList.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   loadPlugins,
 }))
 vi.mock('fs/promises', () => ({ default: { rm, mkdir, cp } }))
-vi.mock('../sources/pluginSource.js', () => ({ allPluginSources: [{ install: sourceInstall }] }))
+vi.mock('../../src/sources/pluginSource.js', () => ({ allPluginSources: [{ install: sourceInstall }] }))
 
 function plugins(modrinth: Plugins['all']['modrinth']): Plugins {
   return {
