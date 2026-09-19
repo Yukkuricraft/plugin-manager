@@ -28,6 +28,14 @@ export default [
           allowNever: true,
         },
       ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "TSPrivateKeyword, MethodDefinition[accessibility='private'], PropertyDefinition[accessibility='private']",
+          message: 'Use a native #private field/method instead of the `private` keyword.',
+        },
+      ],
     },
   },
   {

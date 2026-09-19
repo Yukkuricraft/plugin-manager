@@ -3,13 +3,18 @@ import { formatDate, formatSize, output, symbols } from '../../utils/output.js'
 import { type ColumnWidths, type PluginEntry } from '../pluginEntry.js'
 
 export default class ModrinthPluginEntry implements PluginEntry {
-  constructor(
-    readonly name: string,
-    readonly added: boolean,
-    readonly plugin: ModrinthPlugin,
-    /** Names of the plugins that depend on this one */
-    readonly requiredBy: string[],
-  ) {}
+  readonly name: string
+  readonly added: boolean
+  readonly plugin: ModrinthPlugin
+  /** Names of the plugins that depend on this one */
+  readonly requiredBy: string[]
+
+  constructor(name: string, added: boolean, plugin: ModrinthPlugin, requiredBy: string[]) {
+    this.name = name
+    this.added = added
+    this.plugin = plugin
+    this.requiredBy = requiredBy
+  }
 
   get size() {
     return this.plugin.size
@@ -31,7 +36,7 @@ export default class ModrinthPluginEntry implements PluginEntry {
   printCompact(widths: ColumnWidths) {
     const { version, size, publishedAt } = this.plugin
     console.log(
-      `  ${output.pluginName(`${symbols.plugin} ${this.name.padEnd(widths.name)}`)}  ${output.version(version.padEnd(widths.version))}  ${output.dim(formatSize(size).padStart(widths.size))}  ${output.dim(formatDate(publishedAt))}${this.note()}`,
+      `  ${output.pluginName(`${symbols.plugin} ${this.name.padEnd(widths.name)}`)}  ${output.version(version.padEnd(widths.version))}  ${output.dim(formatSize(size).padStart(widths.size))}  ${output.dim(formatDate(publishedAt))}${this.#note()}`,
     )
   }
 
@@ -46,7 +51,7 @@ export default class ModrinthPluginEntry implements PluginEntry {
     })
   }
 
-  private note() {
+  #note() {
     if (this.orphaned) return ` ${output.dim('(orphaned)')}`
     if (this.requiredBy.length > 0) return ` ${output.dim(`← required by ${this.requiredBy.join(', ')}`)}`
     return ''

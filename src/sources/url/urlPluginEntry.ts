@@ -5,23 +5,25 @@ export default class UrlPluginEntry implements PluginEntry {
   // URL plugins can't be dependencies, so they're always added directly
   readonly added = true
   readonly size = null
+  readonly name: string
+  readonly url: string
 
-  constructor(
-    readonly name: string,
-    readonly url: string,
-  ) {}
+  constructor(name: string, url: string) {
+    this.name = name
+    this.url = url
+  }
 
   /** The name column also holds a "(url)" suffix */
-  private get nameWidth() {
+  get #nameWidth() {
     return `${this.name} (url)`.length
   }
 
   columnWidths(): ColumnWidths {
-    return { name: this.nameWidth, version: 0, size: 0 }
+    return { name: this.#nameWidth, version: 0, size: 0 }
   }
 
   printCompact(widths: ColumnWidths) {
-    const padding = ' '.repeat(widths.name - this.nameWidth)
+    const padding = ' '.repeat(widths.name - this.#nameWidth)
     console.log(
       `  ${output.pluginName(`${symbols.plugin} ${this.name}`)} ${output.dim('(url)')}${padding}  ${output.url(this.url)}`,
     )
