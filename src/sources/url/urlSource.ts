@@ -1,13 +1,9 @@
 /* eslint-disable @typescript-eslint/require-await */
-import fs from 'fs/promises'
-import path from 'node:path'
-
 import { type OverrideChange, PluginSource } from '../pluginSource.js'
 import { AllPlugins, Plugin, Plugins, UrlPlugin } from '../../pluginList.js'
 import { formatSize, output } from '../../utils/output.js'
-import { downloadFile } from '../../utils/files.js'
 import { UserError } from '../../errors.js'
-import { hostHeaders } from './hostHeaders.js'
+import install from './install.js'
 import { parseUrlQuery, pinUrl } from './pin.js'
 import UrlPluginEntry from './urlPluginEntry.js'
 
@@ -74,15 +70,7 @@ const urlSource: PluginSource<UrlPlugin> = {
       overrides: [],
     }
   },
-  async install(plugins: AllPlugins, dir: string): Promise<void> {
-    // url entries don't pin a hash yet, so nothing already here can be trusted: clear it and download everything
-    for (const file of await fs.readdir(dir)) {
-      await fs.rm(path.join(dir, file), { force: true })
-    }
-    await Promise.all(
-      Object.entries(plugins.url).map(([id, plugin]) => downloadFile(plugin.url, dir, { id, hosts: hostHeaders })),
-    )
-  },
+  install,
   removePlugin(plugins: Plugins, allToRemove: { plugin: Plugin; id: string }[]) {
     for (const { id } of allToRemove) {
       delete plugins.all.url[id]
