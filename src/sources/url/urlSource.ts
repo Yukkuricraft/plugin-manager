@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/require-await */
-import { type OverrideChange, PluginSource } from '../pluginSource.js'
+import type { PluginSource } from '../pluginSource.js'
 import { AllPlugins, Plugin, Plugins, UrlPlugin } from '../../pluginList.js'
 import { formatSize, output } from '../../utils/output.js'
 import { UserError } from '../../errors.js'
 import install from './install.js'
 import { parseUrlQuery, pinUrl } from './pin.js'
+import update from './update.js'
 import UrlPluginEntry from './urlPluginEntry.js'
 
 const urlSource: PluginSource<UrlPlugin> = {
@@ -44,32 +45,7 @@ const urlSource: PluginSource<UrlPlugin> = {
     )
     return true
   },
-  async update(
-    existingPlugins: Plugins,
-    newPlugins: Plugins,
-  ): Promise<{
-    changelog: string
-    removed: string[]
-    added: string[]
-    changed: { identifier: string; oldVersion: string; newVersion: string }[]
-    overrides: OverrideChange[]
-  }> {
-    // URLs have nothing to check for updates, but newPlugins starts empty, so they're carried over as-is
-    for (const [id, plugin] of Object.entries(existingPlugins.all.url)) {
-      newPlugins.all.url[id] = plugin
-
-      const addedKey = `url:${id}` as const
-      if (addedKey in existingPlugins.added) newPlugins.added[addedKey] = existingPlugins.added[addedKey]
-    }
-
-    return {
-      changelog: '',
-      removed: [],
-      added: [],
-      changed: [],
-      overrides: [],
-    }
-  },
+  update,
   install,
   removePlugin(plugins: Plugins, allToRemove: { plugin: Plugin; id: string }[]) {
     for (const { id } of allToRemove) {
