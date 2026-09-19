@@ -58,6 +58,38 @@ export async function fetchWithAuth(url: string, hosts: HostTable = {}): Promise
   }
 }
 
+/**
+ * The name to save a download under when nothing else gives one: the server's Content-Disposition filename, then the
+ * last segment of the URL the response came from if it ends in .jar, then `<fallbackName>.jar`
+ */
+function responseFilename(res: Response, fallbackName: string): string {
+  const header = res.headers.get('Content-Disposition')
+  // A malformed header is a server's mistake, not ours to crash on: fall through to the next rule instead
+  let fromHeader: string | undefined
+  try {
+    fromHeader = header === null ? undefined : contentDisposition.parse(header).parameters?.filename
+  } catch {
+    fromHeader = undefined
+  }
+  if (fromHeader) return fromHeader
+
+  // A segment with an invalid escape (e.g. %zz) can't be decoded; treat it as no usable segment
+  let lastSegment = ''
+  try {
+    lastSegment = res.url ? decodeURIComponent(new URL(res.url).pathname.split('/').pop() ?? '') : ''
+  } catch {
+    lastSegment = ''
+  }
+  return lastSegment.endsWith('.jar') ? lastSegment : `${fallbackName}.jar`
+}
+
+/** Throws unless `filename` is a plain file name, so a server can't make a download land outside its directory */
+function checkFilename(filename: string) {
+  if (filename !== path.basename(filename) || filename.includes('..') || filename.startsWith('.')) {
+    throw new ValidationError(`Invalid filename ${filename}`)
+  }
+}
+
 export async function downloadFile(
   url: string,
   dir: string,
@@ -73,16 +105,8 @@ export async function downloadFile(
   validateUrl(url)
   const res = await fetchWithAuth(url, data.hosts)
 
-  let usedFilename = data.filename
-  if (!usedFilename) {
-    const filenameHeader = res.headers.get('Content-Disposition')
-    const contentDispositionData = filenameHeader === null ? null : contentDisposition.parse(filenameHeader)
-    usedFilename = contentDispositionData?.parameters?.filename ?? `${data.id}.jar`
-  }
-
-  if (usedFilename !== path.basename(usedFilename) || usedFilename.includes('..') || usedFilename.startsWith('.')) {
-    throw new ValidationError(`Invalid filename ${usedFilename}`)
-  }
+  const usedFilename = data.filename ?? responseFilename(res, data.id)
+  checkFilename(usedFilename)
 
   const target = path.join(dir, usedFilename)
   const fileStream = createWriteStream(target)
@@ -98,6 +122,47 @@ export async function downloadFile(
       throw new HashMismatchError(`Hash mismatch for ${usedFilename}`)
     }
   }
+}
+
+/** What a url entry pins about the file at its URL */
+export interface DownloadPin {
+  filename: string
+  sha512: string
+  size: number
+}
+
+// Every JAR is a ZIP file, and every ZIP file starts with these bytes
+const jarSignature = Buffer.from([0x50, 0x4b, 0x03, 0x04])
+
+/**
+ * Downloads `url` without saving it, and returns what a url entry pins: the name it'll be saved under, its sha512 and
+ * its size. Throws unless it's a JAR, so an error page, or an API's JSON description of a file, is never pinned.
+ */
+export async function inspectDownload(url: string, hosts: HostTable, fallbackName: string): Promise<DownloadPin> {
+  validateUrl(url)
+  const res = await fetchWithAuth(url, hosts)
+  const filename = responseFilename(res, fallbackName)
+  checkFilename(filename)
+
+  const hash = createHash('sha512')
+  let size = 0
+  let start = Buffer.alloc(0)
+  for await (const chunk of Readable.fromWeb(res.body as ReadableStream)) {
+    const bytes = chunk as Uint8Array
+    if (start.length < jarSignature.length) start = Buffer.concat([start, bytes]).subarray(0, jarSignature.length)
+    hash.update(bytes)
+    size += bytes.length
+  }
+
+  if (!start.equals(jarSignature)) {
+    // An API that needs an Accept header before it serves a file tends to describe the file in JSON instead
+    const json =
+      start[0] === 0x7b
+        ? ' It returned JSON, which APIs send when they need an Accept header to serve the file itself. Add the host to src/sources/url/hostHeaders.ts'
+        : ''
+    throw new UserError(`${url} didn't return a JAR.${json}`)
+  }
+  return { filename, sha512: hash.digest('hex'), size }
 }
 
 export function fileHash(file: string) {
