@@ -8,6 +8,7 @@ import { output } from '../../utils/output.js'
 import { downloadFile, validateUrl } from '../../utils/files.js'
 import { UserError, ValidationError } from '../../errors.js'
 import UrlPluginEntry from './urlPluginEntry.js'
+import { hostHeaders } from './hostHeaders.js'
 
 const urlSource: PluginSource<UrlPlugin> = {
   prefix: 'url',
@@ -78,7 +79,9 @@ const urlSource: PluginSource<UrlPlugin> = {
     for (const file of await fs.readdir(dir)) {
       await fs.rm(path.join(dir, file), { force: true })
     }
-    await Promise.all(Object.entries(plugins.url).map(([id, plugin]) => downloadFile(plugin.url, dir, { id })))
+    await Promise.all(
+      Object.entries(plugins.url).map(([id, plugin]) => downloadFile(plugin.url, dir, { id, hosts: hostHeaders })),
+    )
   },
   removePlugin(plugins: Plugins, allToRemove: { plugin: Plugin; id: string }[]) {
     for (const { id } of allToRemove) {

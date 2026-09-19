@@ -12,6 +12,9 @@ export class RatelimitError extends Error {}
 
 export class MissingDataError extends Error {}
 
+/** Thrown by downloadFile when a downloaded file doesn't have the hash it was expected to have */
+export class HashMismatchError extends ValidationError {}
+
 /**
  * Thrown by getPluginVersion when no version of a project is left after filtering by loader, Minecraft
  * version and featured status. update catches this so it can offer to keep the plugin at its current
