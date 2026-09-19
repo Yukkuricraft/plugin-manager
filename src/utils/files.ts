@@ -10,6 +10,7 @@ import { RequestError, ValidationError } from '../errors.js'
 
 export async function downloadFile(
   url: string,
+  dir: string,
   data: {
     id: string
     filename?: string
@@ -32,12 +33,13 @@ export async function downloadFile(
     throw new ValidationError(`Invalid filename ${usedFilename}`)
   }
 
-  const fileStream = createWriteStream(`./managedPlugins/${usedFilename}`)
+  const target = path.join(dir, usedFilename)
+  const fileStream = createWriteStream(target)
   await finished(Readable.fromWeb(res.body as ReadableStream).pipe(fileStream))
   output.file(usedFilename, 'downloaded')
 
   if (data.sha512 || data.sha1) {
-    const hashes = await fileHash(`./managedPlugins/${usedFilename}`)
+    const hashes = await fileHash(target)
     if (data.sha512 && data.sha512 !== hashes.sha512) {
       throw new ValidationError(`SHA512 hash mismatch for ${usedFilename}`)
     }
