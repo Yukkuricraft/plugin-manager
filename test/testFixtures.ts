@@ -26,6 +26,7 @@ export function urlEntry(fields: Partial<UrlPlugin> = {}): UrlPlugin {
     filename: 'plugin.jar',
     sha512: 'sha512-plugin',
     size: 1,
+    pinnedAt: '2025-01-01T00:00:00Z',
     ...fields,
   }
 }

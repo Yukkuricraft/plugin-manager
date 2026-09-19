@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Plugins } from '../../pluginList.js'
 import { urlEntry } from '../../testFixtures.js'
@@ -27,6 +27,12 @@ function plugins(url: Plugins['all']['url'] = {}): Plugins {
 
 beforeEach(() => {
   for (const fn of [checkbox, input, pinUrl]) fn.mockReset()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-19T12:00:00Z'))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('url update', () => {
@@ -63,6 +69,7 @@ describe('url update', () => {
       url: 'https://files.example/grief-3.2.0.jar',
       version: '3.2.0',
       ...pin,
+      pinnedAt: '2026-09-19T12:00:00.000Z',
     })
     expect(next.added['url:grief']).toBe('3.2.0')
     expect(next.all.url.vault).toEqual(vault)

@@ -19,14 +19,11 @@ const urlSource: PluginSource<UrlPlugin> = {
   },
   async viewPlugins(plugins: { plugin: UrlPlugin; id: string }[]): Promise<void> {
     for (const { plugin, id } of plugins) {
-      output.pluginCard({
-        title: id,
-        url: plugin.url,
-      })
+      new UrlPluginEntry(id, plugin).printVerbose()
     }
   },
   listEntries(plugins: Plugins): UrlPluginEntry[] {
-    return Object.entries(plugins.all.url).map(([id, plugin]) => new UrlPluginEntry(id, plugin.url))
+    return Object.entries(plugins.all.url).map(([id, plugin]) => new UrlPluginEntry(id, plugin))
   },
   async addPlugin(plugins: Plugins, pluginIndicator: string): Promise<boolean> {
     const { id, version, url } = parseUrlQuery(pluginIndicator)
@@ -39,7 +36,7 @@ const urlSource: PluginSource<UrlPlugin> = {
 
     const pin = await pinUrl(plugins, id, url)
     plugins.added[`url:${id}`] = version
-    plugins.all.url[id] = { source: 'url', url, version, ...pin }
+    plugins.all.url[id] = { source: 'url', url, version, ...pin, pinnedAt: new Date().toISOString() }
     output.info(
       `${output.pluginName(id)} ${output.version(version)}: ${pin.filename} (${formatSize(pin.size)}, sha512 ${pin.sha512.slice(0, 8)})`,
     )

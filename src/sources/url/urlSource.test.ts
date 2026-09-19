@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Plugins } from '../../pluginList.js'
 import { urlEntry } from '../../testFixtures.js'
@@ -26,6 +26,12 @@ function plugins(fields: Partial<Plugins> = {}): Plugins {
 beforeEach(() => {
   inspectDownload.mockReset().mockResolvedValue(pin)
   vi.spyOn(console, 'log').mockImplementation(() => undefined)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-19T12:00:00Z'))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('urlSource.addPlugin', () => {
@@ -35,7 +41,13 @@ describe('urlSource.addPlugin', () => {
     await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(true)
 
     expect(locked.added).toEqual({ 'url:vault': '1.7.3' })
-    expect(locked.all.url.vault).toEqual({ source: 'url', url, version: '1.7.3', ...pin })
+    expect(locked.all.url.vault).toEqual({
+      source: 'url',
+      url,
+      version: '1.7.3',
+      ...pin,
+      pinnedAt: '2026-09-19T12:00:00.000Z',
+    })
   })
 
   it('does nothing when the plugin is already added with the same URL and version', async () => {

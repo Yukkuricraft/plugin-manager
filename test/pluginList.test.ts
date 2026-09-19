@@ -121,6 +121,20 @@ describe('loadPlugins', () => {
     )
     await expect(loadPlugins(file)).rejects.toThrow("plugins.json doesn't match the expected format")
   })
+
+  it('rejects a url entry without pinnedAt', async () => {
+    const { pinnedAt: _, ...unpinned } = urlEntry()
+    await fs.writeFile(
+      file,
+      JSON.stringify({
+        version: 2,
+        config: { loader: 'paper', gameVersion: '1.21.1' },
+        added: { 'url:vault': '1.0.0' },
+        all: { modrinth: {}, url: { vault: unpinned } },
+      }),
+    )
+    await expect(loadPlugins(file)).rejects.toThrow("plugins.json doesn't match the expected format")
+  })
 })
 
 describe('pluginsExist', () => {
