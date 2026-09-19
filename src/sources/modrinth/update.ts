@@ -40,6 +40,8 @@ export default async function update(
       name: plugin.slug,
       fromDate: plugin.publishedAt,
       changelog: true,
+      // No lockfile here: update re-resolves every dependency, so they can move to newer builds
+      dependencyContext: { substitutes: existingPlugins.config.substitutes },
     }).catch((e: unknown) => {
       if (e instanceof NoCompatibleVersionError) return e
       throw e

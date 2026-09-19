@@ -11,6 +11,9 @@ export default async function showPlugins(verbose: boolean) {
   const pluginsObj = await loadPlugins()
   const { loader, gameVersion } = pluginsObj.config
   console.log(`${output.label('Server')} ${output.highlight(`${loader} ${gameVersion}`)}`)
+  for (const rule of Object.values(pluginsObj.config.substitutes ?? {})) {
+    console.log(`${output.label('Substitute')} ${output.highlight(`${rule.slug} → ${rule.substituteSlug}`)}`)
+  }
   output.blank()
   const all = allPluginSources
     .flatMap((source) => source.listEntries(pluginsObj))

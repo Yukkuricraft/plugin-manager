@@ -7,15 +7,19 @@ yarn run-cli --help
 plugins <cmd> [args]
 
 Commands:
-  plugins init               Create plugins.json for a server
-  plugins search <plugin>    Search for plugins
-  plugins add <plugin..>     Add plugins
-  plugins view <plugin..>    View information about existing plugins
-  plugins show               Show a summary of all plugins in plugins.json
-  plugins remove <plugin..>  Remove plugins
-  plugins install            Install plugins
-  plugins update             Update plugins
-  plugins completion         generate completion script
+  plugins init                              Create plugins.json for a server
+  plugins search <plugin>                   Search for plugins
+  plugins add <plugin..>                    Add plugins
+  plugins view <plugin..>                   View information about existing
+                                            plugins
+  plugins show                              Show a summary of all plugins in
+                                            plugins.json
+  plugins remove <plugin..>                 Remove plugins
+  plugins substitute <plugin> [substitute]  Use one plugin wherever another is
+                                            required
+  plugins install                           Install plugins
+  plugins update                            Update plugins
+  plugins completion                        generate completion script
 
 Options:
   --help     Show help                                                 [boolean]
@@ -35,7 +39,8 @@ yarn run-cli init --loader paper --game-version 1.21.1
 `init` won't overwrite an existing `plugins.json`. A `plugins.json` made before `init` existed is rejected: delete it
 and run `init`.
 
-`show` prints the loader and Minecraft version above the plugin list, and marks each plugin carrying an override.
+`show` prints the loader and Minecraft version above the plugin list, along with any substitutions, and marks each
+plugin carrying an override or standing in for another.
 
 ### Pinning a version
 
@@ -63,6 +68,38 @@ yarn run-cli add oldplugin --game-version 1.20.4
 updates keep resolving that plugin against its own loader. A Minecraft version override only records that the plugin
 lags, and `update` tries to bring it up to date every time. To drop it, add the plugin again with `--loader` set to the
 server's loader.
+
+### Dependencies
+
+`add` reuses any dependency already in `plugins.json` instead of looking it up again, so adding a plugin doesn't move
+dependencies already in `plugins.json` to newer versions, unless a plugin requires a specific newer build. `update` is
+what moves dependencies to newer versions.
+
+### Substituting one plugin for another
+
+Some plugins can replace another. FastAsyncWorldEdit, for example, is a fork of WorldEdit and works wherever WorldEdit
+is required. Modrinth doesn't record this, so adding a plugin that depends on WorldEdit would install WorldEdit
+alongside FastAsyncWorldEdit. Declare the substitution to prevent that:
+
+```
+yarn run-cli substitute worldedit fastasyncworldedit
+```
+
+From then on, every plugin that requires WorldEdit gets FastAsyncWorldEdit instead, using the one already installed if
+there is one. WorldEdit itself can't be added while the substitution exists, and `install` refuses to run if
+`plugins.json` contains it anyway.
+
+A substitution can't be declared while the plugin being replaced is installed, since both would end up installed. Remove
+it first; or, if other plugins pulled it in, remove them, declare the substitution, then add them back so they pick up
+the substitute. A plugin can only be part of one substitution.
+
+To drop a substitution:
+
+```
+yarn run-cli substitute --remove worldedit
+```
+
+Plugins already using the substitute keep it until they're next added or updated.
 
 ### Updating
 

@@ -1,11 +1,13 @@
 import fs from 'fs/promises'
 
-import { loadPlugins } from '../pluginList.js'
+import { assertNoSubstitutedPluginsLocked, loadPlugins } from '../pluginList.js'
 import { allPluginSources } from '../sources/pluginSource.js'
 import { output } from '../utils/output.js'
 
 export default async function installPlugins() {
   const plugins = await loadPlugins()
+  // Before the plugins folder is cleared, so a refused install leaves the server's current plugins in place
+  assertNoSubstitutedPluginsLocked(plugins)
   output.download('Downloading plugins...')
 
   await fs.rm('./plugins', { recursive: true, force: true })
