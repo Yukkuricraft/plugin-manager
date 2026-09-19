@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { UserError } from '../errors.js'
-import { type Plugins } from '../pluginList.js'
-import updatePlugins from './updatePlugins.js'
+import { UserError } from '../../src/errors.js'
+import { type Plugins } from '../../src/pluginList.js'
+import updatePlugins from '../../src/commands/updatePlugins.js'
 
 const { loadPlugins, writePlugins, chooseGameVersion, confirm, installPlugins, writeFile, sourceUpdate } = vi.hoisted(
   () => ({
@@ -16,12 +16,12 @@ const { loadPlugins, writePlugins, chooseGameVersion, confirm, installPlugins, w
   }),
 )
 
-vi.mock('../pluginList.js', () => ({ loadPlugins, writePlugins }))
-vi.mock('../sources/modrinth/gameVersions.js', () => ({ chooseGameVersion }))
+vi.mock('../../src/pluginList.js', () => ({ loadPlugins, writePlugins }))
+vi.mock('../../src/sources/modrinth/gameVersions.js', () => ({ chooseGameVersion }))
 vi.mock('@inquirer/prompts', () => ({ confirm }))
-vi.mock('./installPlugins.js', () => ({ default: installPlugins }))
+vi.mock('../../src/commands/installPlugins.js', () => ({ default: installPlugins }))
 vi.mock('fs/promises', () => ({ default: { writeFile } }))
-vi.mock('../sources/pluginSource.js', () => ({ allPluginSources: [{ update: sourceUpdate }] }))
+vi.mock('../../src/sources/pluginSource.js', () => ({ allPluginSources: [{ update: sourceUpdate }] }))
 
 function existingPlugins(): Plugins {
   return {

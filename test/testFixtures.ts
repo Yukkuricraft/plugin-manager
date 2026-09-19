@@ -1,4 +1,4 @@
-import { type ModrinthPlugin } from './pluginList.js'
+import { type ModrinthPlugin } from '../src/pluginList.js'
 
 /** A lock file entry for tests, with every field defaulted so a test only states what it cares about */
 export function modrinthEntry(fields: Partial<ModrinthPlugin> = {}): ModrinthPlugin {

@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { NoCompatibleVersionError } from '../../errors.js'
-import { type AllModrinthPlugins } from '../../pluginList.js'
+import { NoCompatibleVersionError } from '../../../src/errors.js'
+import { type AllModrinthPlugins } from '../../../src/pluginList.js'
 import { modrinthEntry } from '../../testFixtures.js'
-import { addRequiredDependencies, carryOverPlugins, type DependencyInfo, getPluginVersion } from './utils.js'
+import {
+  addRequiredDependencies,
+  carryOverPlugins,
+  type DependencyInfo,
+  getPluginVersion,
+} from '../../../src/sources/modrinth/utils.js'
 
 const { get } = vi.hoisted(() => ({ get: vi.fn() }))
-vi.mock('./client.js', () => ({ default: { GET: get } }))
+vi.mock('../../../src/sources/modrinth/client.js', () => ({ default: { GET: get } }))
 
 function requiredDep(projectId: string, version: string): DependencyInfo {
   return {

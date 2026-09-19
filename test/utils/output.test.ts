@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatOverrides } from './output.js'
+import { formatOverrides } from '../../src/utils/output.js'
 
 describe('formatOverrides', () => {
   it('describes each override', () => {

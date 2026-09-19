@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { UserError } from '../../errors.js'
-import { type Plugins } from '../../pluginList.js'
+import { UserError } from '../../../src/errors.js'
+import { type Plugins } from '../../../src/pluginList.js'
 import { modrinthEntry } from '../../testFixtures.js'
-import update from './update.js'
+import update from '../../../src/sources/modrinth/update.js'
 
 const { get, select } = vi.hoisted(() => ({ get: vi.fn(), select: vi.fn() }))
-vi.mock('./client.js', () => ({ default: { GET: get } }))
+vi.mock('../../../src/sources/modrinth/client.js', () => ({ default: { GET: get } }))
 vi.mock('@inquirer/prompts', () => ({ select }))
 
 function modrinthVersion(projectId: string, versionNumber: string, gameVersions: string[], publishedAt: string) {

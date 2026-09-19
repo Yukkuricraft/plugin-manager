@@ -3,8 +3,8 @@ import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { UserError } from './errors.js'
-import { loadPlugins, type Plugins, pluginsExist, writePlugins } from './pluginList.js'
+import { UserError } from '../src/errors.js'
+import { loadPlugins, type Plugins, pluginsExist, writePlugins } from '../src/pluginList.js'
 import { modrinthEntry } from './testFixtures.js'
 
 let dir: string

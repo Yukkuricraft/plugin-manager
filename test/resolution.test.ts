@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { type ServerConfig } from './pluginList.js'
+import { type ServerConfig } from '../src/pluginList.js'
 import {
   clearGameVersionOverride,
   grantGameVersionOverride,
@@ -8,7 +8,7 @@ import {
   resolveTarget,
   sameOverrides,
   searchTarget,
-} from './resolution.js'
+} from '../src/resolution.js'
 
 const config: ServerConfig = { loader: 'paper', gameVersion: '1.21.1' }
 
