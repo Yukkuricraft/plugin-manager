@@ -101,6 +101,43 @@ yarn run-cli substitute --remove worldedit
 
 Plugins already using the substitute keep it until they're next added or updated.
 
+### URL plugins
+
+Plugins that aren't on Modrinth can be added from a URL, with an identifier of your choice and a version label for the
+file:
+
+```
+yarn run-cli add url:vault@1.7.3@https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar
+```
+
+`add` downloads the file once, checks that it's a JAR, and records its filename, size and SHA-512 in `plugins.json`,
+along with when it was pinned, which `show` lists as its date. `install` checks every download against those, so if the
+file behind the URL changes, `install` fails rather than install something else. Run `add` again to accept the new file.
+
+A URL plugin can't share a filename with any other plugin, since both would be saved to the plugins folder under that
+name.
+
+`update` asks which URL plugins have a new file. For each one you pick, it asks for the new URL and version, and pins
+the new file the same way. The rest are kept as they are.
+
+#### Private GitHub releases
+
+A release asset in a private GitHub repo can only be downloaded through GitHub's API, so its URL is the asset's API URL
+rather than the link on the release page. List a release's asset URLs with:
+
+```
+gh api repos/<owner>/<repo>/releases/tags/<tag> --jq '.assets[] | .name + " " + .url'
+```
+
+Downloads from `api.github.com` send `GITHUB_TOKEN` as the token. Set it to a fine-grained personal access token that
+has read access to the repo's contents:
+
+```
+GITHUB_TOKEN=github_pat_... yarn run-cli add url:griefdefender@3.1.1@https://api.github.com/repos/<owner>/<repo>/releases/assets/<id>
+```
+
+`install` and `update` need it too, whenever a URL plugin comes from a private repo.
+
 ### Updating
 
 `update` asks which Minecraft version to update plugins for, defaulting to the one in `plugins.json`, and updates
@@ -141,9 +178,12 @@ file, and all installs will be validated against it.
 
 When you install plugins, three folders will be created:
 
-- `managedPlugins` where plugins automatically downloaded go
+- `managedPlugins` where downloaded plugins go, in a folder for each source: `managedPlugins/modrinth` and
+  `managedPlugins/url`. A source only ever changes its own folder, and anything else in `managedPlugins` is deleted.
 - `unmanagedPlugins` where you can put anything that's not managed by the script. Configs go here.
-- `plugins` the contents of `managedPlugins` and `unmanagedPlugins` merged into one folder.
+- `plugins` the contents of each source's folder and of `unmanagedPlugins` merged into one folder. It's only replaced
+  once every download has succeeded, so a failed install leaves the current plugins in place. Files in
+  `unmanagedPlugins` win over downloaded ones with the same name.
 
 ## Developing
 

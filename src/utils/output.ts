@@ -134,7 +134,9 @@ export const output = {
     loaders?: string[]
     filename?: string
     size?: number
+    sha512?: string
     publishedAt?: string
+    pinnedAt?: string
     mcVersions?: string[]
     overrides?: PluginOverrides
     substitutes?: string
@@ -181,8 +183,14 @@ export const output = {
       const size = data.size === undefined ? '' : ` ${this.dim(`(${formatSize(data.size)})`)}`
       console.log(`   ${this.label('File')} ${chalk.white(data.filename)}${size}`)
     }
+    if (data.sha512) {
+      console.log(`   ${this.label('SHA-512')} ${this.dim(data.sha512)}`)
+    }
     if (data.publishedAt) {
       console.log(`   ${this.label('Published')} ${chalk.white(formatDate(data.publishedAt))}`)
+    }
+    if (data.pinnedAt) {
+      console.log(`   ${this.label('Pinned')} ${chalk.white(formatDate(data.pinnedAt))}`)
     }
     if (data.categories && data.categories.length > 0) {
       console.log(`   ${this.label('Categories')} ${chalk.magenta(data.categories.join(', '))}`)

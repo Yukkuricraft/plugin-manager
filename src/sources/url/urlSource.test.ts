@@ -1,0 +1,73 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { type Plugins } from '../../pluginList.js'
+import { urlEntry } from '../../testFixtures.js'
+import urlSource from './urlSource.js'
+
+const { inspectDownload } = vi.hoisted(() => ({ inspectDownload: vi.fn() }))
+vi.mock('../../utils/files.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  inspectDownload,
+}))
+
+const pin = { filename: 'Vault.jar', sha512: 'sha512-vault', size: 272259 }
+const url = 'https://files.example/Vault.jar'
+
+function plugins(fields: Partial<Plugins> = {}): Plugins {
+  return {
+    version: 2,
+    config: { loader: 'paper', gameVersion: '1.21.4' },
+    added: {},
+    all: { modrinth: {}, url: {} },
+    ...fields,
+  }
+}
+
+beforeEach(() => {
+  inspectDownload.mockReset().mockResolvedValue(pin)
+  vi.spyOn(console, 'log').mockImplementation(() => undefined)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-19T12:00:00Z'))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+describe('urlSource.addPlugin', () => {
+  it('pins the file and records the version as the added value', async () => {
+    const locked = plugins()
+
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(true)
+
+    expect(locked.added).toEqual({ 'url:vault': '1.7.3' })
+    expect(locked.all.url.vault).toEqual({
+      source: 'url',
+      url,
+      version: '1.7.3',
+      ...pin,
+      pinnedAt: '2026-09-19T12:00:00.000Z',
+    })
+  })
+
+  it('does nothing when the plugin is already added with the same URL and version', async () => {
+    const locked = plugins({
+      added: { 'url:vault': '1.7.3' },
+      all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.3' }) } },
+    })
+
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(false)
+    expect(inspectDownload).not.toHaveBeenCalled()
+  })
+
+  it('pins again when the version differs', async () => {
+    const locked = plugins({
+      added: { 'url:vault': '1.7.2' },
+      all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.2' }) } },
+    })
+
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(true)
+    expect(inspectDownload).toHaveBeenCalledOnce()
+    expect(locked.added['url:vault']).toBe('1.7.3')
+  })
+})
