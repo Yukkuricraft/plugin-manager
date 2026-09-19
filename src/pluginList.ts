@@ -67,6 +67,7 @@ export type AllModrinthPlugins = z.infer<typeof allModrinthPlugins>
 /**
  * A plugin downloaded from a URL. It pins the file it was added with, so install can tell if the file behind the URL
  * changes. The version is a label the user gives, since a URL doesn't reliably say which version it points to.
+ * pinnedAt records when the current file was pinned, by add or update, and is what show lists as the entry's date.
  */
 export const urlPlugin = z.object({
   source: z.literal('url'),
@@ -75,6 +76,7 @@ export const urlPlugin = z.object({
   filename: z.string(),
   sha512: z.string(),
   size: z.number(),
+  pinnedAt: z.string(),
 })
 export type UrlPlugin = z.infer<typeof urlPlugin>
 
