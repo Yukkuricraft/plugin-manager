@@ -130,13 +130,20 @@ gh api repos/<owner>/<repo>/releases/tags/<tag> --jq '.assets[] | .name + " " + 
 ```
 
 Downloads from `api.github.com` send `GITHUB_TOKEN` as the token. Set it to a fine-grained personal access token that
-has read access to the repo's contents:
+has read access to the repo's contents.
+
+`install` and `update` need it too, whenever a URL plugin comes from a private repo, so rather than passing it on every
+command, put it in a `.env.yarn` file at the repo root:
 
 ```
-GITHUB_TOKEN=github_pat_... yarn run-cli add url:griefdefender@3.1.1@https://api.github.com/repos/<owner>/<repo>/releases/assets/<id>
+GITHUB_TOKEN=github_pat_...
 ```
 
-`install` and `update` need it too, whenever a URL plugin comes from a private repo.
+Yarn loads it automatically (it's already in `.gitignore`, so it's never committed):
+
+```
+yarn run-cli add url:griefdefender@3.1.1@https://api.github.com/repos/<owner>/<repo>/releases/assets/<id>
+```
 
 ### Updating
 

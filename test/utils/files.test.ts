@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HashMismatchError, RequestError, UserError } from '../errors.js'
-import { downloadFile, fetchWithAuth, inspectDownload, type HostTable } from './files.js'
+import { HashMismatchError, RequestError, UserError } from '../../src/errors.js'
+import { downloadFile, fetchWithAuth, inspectDownload, type HostTable } from '../../src/utils/files.js'
 
 const fetchMock = vi.fn<typeof fetch>()
 

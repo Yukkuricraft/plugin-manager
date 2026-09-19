@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { type Plugins } from '../../pluginList.js'
+import { type Plugins } from '../../../src/pluginList.js'
 import { urlEntry } from '../../testFixtures.js'
-import urlSource from './urlSource.js'
+import urlSource from '../../../src/sources/url/urlSource.js'
 
 const { inspectDownload } = vi.hoisted(() => ({ inspectDownload: vi.fn() }))
-vi.mock('../../utils/files.js', async (importOriginal) => ({
+vi.mock('../../../src/utils/files.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   inspectDownload,
 }))

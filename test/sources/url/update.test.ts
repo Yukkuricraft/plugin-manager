@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { type Plugins } from '../../pluginList.js'
+import { type Plugins } from '../../../src/pluginList.js'
 import { urlEntry } from '../../testFixtures.js'
-import update from './update.js'
+import update from '../../../src/sources/url/update.js'
 
 const { checkbox, input, pinUrl } = vi.hoisted(() => ({ checkbox: vi.fn(), input: vi.fn(), pinUrl: vi.fn() }))
 vi.mock('@inquirer/prompts', () => ({ checkbox, input }))
-vi.mock('./pin.js', () => ({ pinUrl }))
+vi.mock('../../../src/sources/url/pin.js', () => ({ pinUrl }))
 
 const grief = urlEntry({
   url: 'https://files.example/grief-3.1.1.jar',

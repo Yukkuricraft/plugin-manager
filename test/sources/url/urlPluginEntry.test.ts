@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { urlEntry } from '../../testFixtures.js'
-import UrlPluginEntry from './urlPluginEntry.js'
+import UrlPluginEntry from '../../../src/sources/url/urlPluginEntry.js'
 
 const vault = urlEntry({
   url: 'https://files.example/Vault.jar',

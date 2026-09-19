@@ -4,15 +4,15 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HashMismatchError, ValidationError } from '../../errors.js'
-import { type AllPlugins } from '../../pluginList.js'
+import { HashMismatchError, ValidationError } from '../../../src/errors.js'
+import { type AllPlugins } from '../../../src/pluginList.js'
 import { urlEntry } from '../../testFixtures.js'
-import { hostHeaders } from './hostHeaders.js'
-import install from './install.js'
+import { hostHeaders } from '../../../src/sources/url/hostHeaders.js'
+import install from '../../../src/sources/url/install.js'
 
 const { downloadFile } = vi.hoisted(() => ({ downloadFile: vi.fn() }))
 // fileHash stays real, so the files written below are really hashed
-vi.mock('../../utils/files.js', async (importOriginal) => ({
+vi.mock('../../../src/utils/files.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   downloadFile,
 }))

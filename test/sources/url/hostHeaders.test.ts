@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { hostHeaders } from './hostHeaders.js'
+import { hostHeaders } from '../../../src/sources/url/hostHeaders.js'
 
 afterEach(() => {
   vi.unstubAllEnvs()

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { UserError, ValidationError } from '../../errors.js'
-import { type Plugins } from '../../pluginList.js'
+import { UserError, ValidationError } from '../../../src/errors.js'
+import { type Plugins } from '../../../src/pluginList.js'
 import { modrinthEntry, urlEntry } from '../../testFixtures.js'
-import { hostHeaders } from './hostHeaders.js'
-import { parseUrlQuery, pinUrl } from './pin.js'
+import { hostHeaders } from '../../../src/sources/url/hostHeaders.js'
+import { parseUrlQuery, pinUrl } from '../../../src/sources/url/pin.js'
 
 const { inspectDownload } = vi.hoisted(() => ({ inspectDownload: vi.fn() }))
-vi.mock('../../utils/files.js', async (importOriginal) => ({
+vi.mock('../../../src/utils/files.js', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   inspectDownload,
 }))
