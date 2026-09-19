@@ -8,7 +8,7 @@
     "lint": "eslint",
     "fixlint": "eslint --fix",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --dir src",
+    "test": "vitest run --dir test",
     "check": "yarn lint && yarn format-check && yarn typecheck && yarn test",
     "format-check": "prettier --check \"**/*.(md|yaml|json|js|ts)\"",
     "format": "prettier --write \"**/*.(md|yaml|json|js|ts)\""

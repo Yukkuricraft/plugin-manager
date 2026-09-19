@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { loaderCandidates, loaderFallbacks, mostLoaderSpecific } from './loaders.js'
+import { loaderCandidates, loaderFallbacks, mostLoaderSpecific } from '../../../src/sources/modrinth/loaders.js'
 
 describe('loaderFallbacks', () => {
   it('walks the compatibility chain from most to least specific', () => {
