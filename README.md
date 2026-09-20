@@ -42,6 +42,42 @@ and run `init`.
 `show` prints the loader and Minecraft version above the plugin list, along with any substitutions, and marks each
 plugin carrying an override or standing in for another.
 
+### Working on another server
+
+`plugins.json` doesn't have to live in this directory. It's usually kept in the server's own plugins directory, version
+controlled alongside the configs that server writes. Point a command at one with `--plugins-json`:
+
+```
+yarn run-cli show --plugins-json /var/lib/yukkuricraft/env/env1/minecraft/yukkuricraft/plugins/plugins.json
+```
+
+To avoid typing that path every time, create `environments.json` here, mapping a name to each server's plugins
+directory:
+
+```json
+{
+  "env1": "/var/lib/yukkuricraft/env/env1/minecraft/yukkuricraft/plugins",
+  "env7": "/var/lib/yukkuricraft/env/env7/minecraft/yukkuricraft/plugins"
+}
+```
+
+Then name a server with `--env`, which uses the `plugins.json` inside its directory:
+
+```
+yarn run-cli show --env env1
+yarn run-cli update --env env7
+```
+
+`environments.json` isn't committed, since its paths are specific to the machine the tool runs on. The directory it
+names must already exist, but the `plugins.json` inside it doesn't have to — `init --env env7` can create one.
+
+Without `--env` or `--plugins-json`, commands use `./plugins.json`, as they always have. The two options can't be
+combined.
+
+`managedPlugins` and `plugins` always stay in this directory, whichever server you're working on, so run `install` from
+here rather than from the server's directory. Nothing is written to the server directory automatically — copy `plugins`
+there yourself. Switching between servers means re-downloading whatever the other server didn't already have staged.
+
 ### Pinning a version
 
 When adding a Modrinth plugin, you can pin it to a specific version with `<plugin>@<version>`. The version must exactly

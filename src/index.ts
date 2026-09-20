@@ -10,8 +10,8 @@ import showPlugins from './commands/showPlugins.js'
 import substitutePlugins from './commands/substitutePlugins.js'
 import updatePlugins from './commands/updatePlugins.js'
 import viewPlugins from './commands/viewPlugins.js'
+import { resolvePluginsPath } from './environments.js'
 import { MissingDataError, RequestError, UserError, ValidationError } from './errors.js'
-import { defaultPluginsPath } from './pluginList.js'
 import { allLoaders } from './sources/modrinth/loaders.js'
 import { output } from './utils/output.js'
 
@@ -27,10 +27,23 @@ const featuredDescription =
   'Only consider plugin versions the author has marked as featured on Modrinth. Does not apply to dependencies, and is not remembered between runs.'
 const versionSyntaxDescription =
   'To pin a Modrinth plugin to a specific version, use "<plugin>@<version>". The version must exactly match the Modrinth version number. If omitted, the latest matching version is resolved.'
+const envDescription =
+  'The server to work on, by a name in environments.json, which maps names to server plugins directories. Its plugins.json is used.'
+const pluginsJsonDescription =
+  'The plugins.json to work on. Defaults to ./plugins.json. Use --env instead to name a server set up in environments.json.'
 
 await yargs()
   .scriptName('plugins')
   .usage('$0 <cmd> [args]')
+  .option('env', {
+    type: 'string',
+    describe: envDescription,
+  })
+  .option('plugins-json', {
+    type: 'string',
+    describe: pluginsJsonDescription,
+  })
+  .conflicts('env', 'plugins-json')
   .command(
     'init',
     'Create plugins.json for a server',
@@ -45,7 +58,7 @@ await yargs()
           alias: 'mc-version',
           describe: 'The Minecraft version the server runs, e.g. "1.21.1". Asked for if not given',
         }),
-    (argv) => initPlugins(defaultPluginsPath, { loader: argv.loader, gameVersion: argv.gameVersion }),
+    async (argv) => initPlugins(await resolvePluginsPath(argv), { loader: argv.loader, gameVersion: argv.gameVersion }),
   )
   .command(
     'search <plugin>',
@@ -70,8 +83,8 @@ await yargs()
           describe:
             'Show plugins whichever Minecraft versions they support, including ones that lag behind plugins.json',
         }),
-    (argv) =>
-      searchPlugins(defaultPluginsPath, argv.plugin, {
+    async (argv) =>
+      searchPlugins(await resolvePluginsPath(argv), argv.plugin, {
         loader: argv.loader,
         gameVersion: argv.gameVersion,
         anyGameVersion: argv.anyGameVersion,
@@ -102,8 +115,8 @@ await yargs()
           type: 'boolean',
           describe: featuredDescription,
         }),
-    (argv) =>
-      addPlugins(defaultPluginsPath, argv.plugin, {
+    async (argv) =>
+      addPlugins(await resolvePluginsPath(argv), argv.plugin, {
         loader: argv.loader,
         gameVersion: argv.gameVersion,
         featured: argv.featured,
@@ -119,7 +132,7 @@ await yargs()
         demandOption: true,
         array: true,
       }),
-    (argv) => viewPlugins(defaultPluginsPath, argv.plugin),
+    async (argv) => viewPlugins(await resolvePluginsPath(argv), argv.plugin),
   )
   .command(
     'show',
@@ -131,7 +144,7 @@ await yargs()
         describe: 'Show full details for each plugin',
         default: false,
       }),
-    (argv) => showPlugins(defaultPluginsPath, argv.verbose),
+    async (argv) => showPlugins(await resolvePluginsPath(argv), argv.verbose),
   )
   .command(
     'remove <plugin..>',
@@ -143,7 +156,7 @@ await yargs()
         array: true,
         demandOption: true,
       }),
-    (argv) => removePlugins(defaultPluginsPath, argv.plugin),
+    async (argv) => removePlugins(await resolvePluginsPath(argv), argv.plugin),
   )
   .command(
     'substitute <plugin> [substitute]',
@@ -163,9 +176,15 @@ await yargs()
           type: 'boolean',
           describe: 'Remove the substitution for <plugin> instead',
         }),
-    (argv) => substitutePlugins(defaultPluginsPath, argv.plugin, argv.substitute, { remove: argv.remove }),
+    async (argv) =>
+      substitutePlugins(await resolvePluginsPath(argv), argv.plugin, argv.substitute, { remove: argv.remove }),
   )
-  .command('install', 'Install plugins', {}, () => installPlugins(defaultPluginsPath))
+  .command(
+    'install',
+    'Install plugins',
+    (yargs) => yargs,
+    async (argv) => installPlugins(await resolvePluginsPath(argv)),
+  )
   .command(
     'update',
     'Update plugins',
@@ -180,7 +199,8 @@ await yargs()
           type: 'boolean',
           describe: featuredDescription,
         }),
-    (argv) => updatePlugins(defaultPluginsPath, { gameVersion: argv.gameVersion, featured: argv.featured }),
+    async (argv) =>
+      updatePlugins(await resolvePluginsPath(argv), { gameVersion: argv.gameVersion, featured: argv.featured }),
   )
   .completion()
   .help()
