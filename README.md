@@ -150,11 +150,27 @@ yarn run-cli add url:vault@1.7.3@https://github.com/MilkBowl/Vault/releases/down
 along with when it was pinned. `install` checks every download against those, so it fails if the file behind the URL
 changes. Run `add` again to accept the new file.
 
-A URL plugin can't share a filename with any other plugin, since both would be saved to the plugins folder under that
-name.
+A URL plugin can't share a filename with another plugin installed in the same directory, since one would overwrite the
+other.
 
 `update` asks which URL plugins have a new file. For each one you pick, it asks for the new URL and version, and pins
 the new file the same way.
+
+#### Installing into a subdirectory
+
+The server loads some JARs from somewhere other than the plugins folder itself. PlaceholderAPI expansions, for example,
+live in `plugins/PlaceholderAPI/expansions`. Pass `--path` to install a URL plugin into a directory inside the plugins
+folder:
+
+```
+yarn run-cli add url:expansion@2.20.1@https://github.com/<owner>/<repo>/releases/download/<file> --path PlaceholderAPI/expansions
+```
+
+The path is relative to the plugins folder, and can't climb out of it. It's recorded as an override on the plugin and
+kept on later adds and updates, so correcting a plugin's URL leaves its file where it is. Pass `--path ''` to install it
+in the plugins folder itself again.
+
+`--path` only applies to URL plugins.
 
 #### Private GitHub releases
 
@@ -229,8 +245,9 @@ When you install plugins, two folders are created in this directory:
   succeeded, so a failed install leaves whatever was already staged in place, which may be from a different server's
   lockfile.
 
-Both are rebuilt from the lockfile, so neither is worth keeping. `plugins` holds nothing but JARs: copy it into the
-server's plugins directory yourself.
+Both are rebuilt from the lockfile, so neither is worth keeping. Copy `plugins` into the server's plugins directory
+yourself, merging it into what's there, since a plugin with a path override puts its JAR in a subdirectory the server
+already uses.
 
 ## Developing
 
