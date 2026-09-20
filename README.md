@@ -42,16 +42,13 @@ yarn run-cli init
 yarn run-cli init --loader paper --game-version 1.21.1
 ```
 
-`init` won't overwrite an existing `plugins.json`. A `plugins.json` made before `init` existed is rejected: delete it
-and run `init`.
-
 `show` prints the loader and Minecraft version above the plugin list, along with any substitutions, and marks each
 plugin carrying an override or standing in for another.
 
 ### Working on another server
 
-`plugins.json` doesn't have to live in this directory. It's usually kept in the server's own plugins directory, version
-controlled alongside the configs that server writes. Point a command at one with `--plugins-json`:
+`plugins.json` is usually kept in the server's own plugins directory rather than here, version controlled alongside the
+configs that server writes. Point a command at one with `--plugins-json`:
 
 ```
 yarn run-cli show --plugins-json /var/lib/yukkuricraft/env/env1/minecraft/yukkuricraft/plugins/plugins.json
@@ -74,15 +71,12 @@ yarn run-cli show --env env1
 yarn run-cli update --env env7
 ```
 
-`environments.json` isn't committed, since its paths are specific to the machine the tool runs on. The directory it
-names must already exist, but the `plugins.json` inside it doesn't have to — `init --env env7` can create one.
+`environments.json` isn't committed, since its paths are specific to the machine the tool runs on.
 
-Without `--env` or `--plugins-json`, commands use `./plugins.json`, as they always have. The two options can't be
-combined.
+Without `--env` or `--plugins-json`, commands use `./plugins.json`. The two options can't be combined.
 
-`managedPlugins` and `plugins` always stay in this directory, whichever server you're working on, so run `install` from
-here rather than from the server's directory. Nothing is written to the server directory automatically — copy `plugins`
-there yourself. Switching between servers means re-downloading whatever the other server didn't already have staged.
+`managedPlugins` and `plugins` stay in this directory, so run `install` from here. Copy `plugins` into the server's
+directory yourself. Switching between servers means re-downloading whatever the other server didn't already have staged.
 
 ### Pinning a version
 
@@ -93,7 +87,8 @@ match the Modrinth version number. Without it, the latest matching version is re
 yarn run-cli add fastasyncworldedit@2.15.1
 ```
 
-Note that `update` does not currently preserve a pin, and will move the plugin back to the latest version.
+`update` doesn't preserve a pin, and moves the plugin back to the latest version compatible with the server
+configuration.
 
 ### Overriding the loader or Minecraft version
 
@@ -113,9 +108,8 @@ server's loader.
 
 ### Dependencies
 
-`add` reuses any dependency already in `plugins.json` instead of looking it up again, so adding a plugin doesn't move
-dependencies already in `plugins.json` to newer versions, unless a plugin requires a specific newer build. `update` is
-what moves dependencies to newer versions.
+`add` reuses any dependency already in `plugins.json` instead of looking it up again, unless a plugin requires a
+specific newer build. `update` is what moves dependencies to newer versions.
 
 ### Substituting one plugin for another
 
@@ -153,14 +147,14 @@ yarn run-cli add url:vault@1.7.3@https://github.com/MilkBowl/Vault/releases/down
 ```
 
 `add` downloads the file once, checks that it's a JAR, and records its filename, size and SHA-512 in `plugins.json`,
-along with when it was pinned, which `show` lists as its date. `install` checks every download against those, so if the
-file behind the URL changes, `install` fails rather than install something else. Run `add` again to accept the new file.
+along with when it was pinned. `install` checks every download against those, so it fails if the file behind the URL
+changes. Run `add` again to accept the new file.
 
 A URL plugin can't share a filename with any other plugin, since both would be saved to the plugins folder under that
 name.
 
 `update` asks which URL plugins have a new file. For each one you pick, it asks for the new URL and version, and pins
-the new file the same way. The rest are kept as they are.
+the new file the same way.
 
 #### Private GitHub releases
 
@@ -174,14 +168,15 @@ gh api repos/<owner>/<repo>/releases/tags/<tag> --jq '.assets[] | .name + " " + 
 Downloads from `api.github.com` send `GITHUB_TOKEN` as the token. Set it to a fine-grained personal access token that
 has read access to the repo's contents.
 
-`install` and `update` need it too, whenever a URL plugin comes from a private repo, so rather than passing it on every
-command, put it in a `.env.yarn` file at the repo root:
+`install` and `update` need it too, whenever a URL plugin comes from a private repo.
+
+For convenience, create a `.env.yarn` file at the repo root:
 
 ```
 GITHUB_TOKEN=github_pat_...
 ```
 
-Yarn loads it automatically (it's already in `.gitignore`, so it's never committed):
+Yarn loads it automatically (it's already in `.gitignore`):
 
 ```
 yarn run-cli add url:griefdefender@3.1.1@https://api.github.com/repos/<owner>/<repo>/releases/assets/<id>
@@ -203,7 +198,7 @@ at its current version or abort. Nothing is written unless every plugin is eithe
 ### Featured versions only
 
 Pass `--featured` to `add` or `update` to only consider versions the author has marked as featured on Modrinth. It
-doesn't apply to dependencies, and isn't remembered, so it has to be passed every time.
+doesn't apply to dependencies, and has to be passed every time.
 
 ### Filtering search results
 
@@ -222,21 +217,20 @@ supports both.
 
 ## How it works
 
-Whenever you add, remove or update a plugin, the changes will be reflected in plugins.json. This file acts as the lock
-file, and all installs will be validated against it. It usually lives in the server's own plugins directory rather than
-here — see "Working on another server".
+Whenever you add, remove or update a plugin, the change is recorded in `plugins.json`. It's the lockfile: every install
+is validated against it. It usually lives in the server's own plugins directory rather than here — see "Working on
+another server".
 
-When you install plugins, two folders are created in this directory — always here, in this tool's own directory, never
-in the targeted server's directory:
+When you install plugins, two folders are created in this directory:
 
 - `managedPlugins` where downloaded plugins go, in a folder for each source: `managedPlugins/modrinth` and
-  `managedPlugins/url`. A source only ever changes its own folder, and anything else in `managedPlugins` is deleted.
+  `managedPlugins/url`. A source only changes its own folder, and anything else in `managedPlugins` is deleted.
 - `plugins` the contents of each source's folder merged into one folder. It's only replaced once every download has
-  succeeded, so a failed install leaves whatever was already staged there in place — which may be from a different
-  server's lockfile if you last ran `install` against one.
+  succeeded, so a failed install leaves whatever was already staged in place, which may be from a different server's
+  lockfile.
 
 Both are rebuilt from the lockfile, so neither is worth keeping. `plugins` holds nothing but JARs: copy it into the
-server's plugins directory yourself, which adds and replaces JARs there and leaves that server's configs and data alone.
+server's plugins directory yourself.
 
 ## Developing
 
