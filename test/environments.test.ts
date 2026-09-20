@@ -37,6 +37,31 @@ describe('resolvePluginsPath', () => {
     )
   })
 
+  it('rejects --plugins-json given but empty, rather than silently falling back to the default', async () => {
+    await expect(resolvePluginsPath({ pluginsJson: '' }, environmentsPath)).rejects.toThrow(UserError)
+    await expect(resolvePluginsPath({ pluginsJson: '' }, environmentsPath)).rejects.toThrow('--plugins-json')
+  })
+
+  it('rejects --plugins-json given as only whitespace', async () => {
+    await expect(resolvePluginsPath({ pluginsJson: '   ' }, environmentsPath)).rejects.toThrow('--plugins-json')
+  })
+
+  it('rejects --env given but empty, rather than silently falling back to the default', async () => {
+    // environments.json is deliberately never written, so reading it would throw
+    await expect(resolvePluginsPath({ env: '' }, environmentsPath)).rejects.toThrow(UserError)
+    await expect(resolvePluginsPath({ env: '' }, environmentsPath)).rejects.toThrow('--env')
+  })
+
+  it('rejects --env given as only whitespace', async () => {
+    await expect(resolvePluginsPath({ env: '   ' }, environmentsPath)).rejects.toThrow('--env')
+  })
+
+  it('still falls back to the default when both --env and --plugins-json are absent', async () => {
+    await expect(resolvePluginsPath({ env: undefined, pluginsJson: undefined }, environmentsPath)).resolves.toBe(
+      './plugins.json',
+    )
+  })
+
   it('resolves a name to the plugins.json in its directory, whether or not that file exists yet', async () => {
     await writeEnvironments({ env1: serverDir })
 

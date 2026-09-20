@@ -43,15 +43,15 @@ const v2: Plugins = {
 }
 
 describe('loadPlugins', () => {
-  it('rejects a missing file, pointing at init', async () => {
+  it('rejects a missing file, naming the path and pointing at init', async () => {
     await expect(loadPlugins(file)).rejects.toThrow(UserError)
-    await expect(loadPlugins(file)).rejects.toThrow('Run `yarn run-cli init`')
+    await expect(loadPlugins(file)).rejects.toThrow(`No plugins.json found at ${file}. Run \`yarn run-cli init\``)
   })
 
-  it('rejects a version 1 file with the migration message', async () => {
+  it('rejects a version 1 file with the migration message, naming the path', async () => {
     await fs.writeFile(file, JSON.stringify({ version: 1, added: {}, all: { modrinth: {}, url: {} } }))
     await expect(loadPlugins(file)).rejects.toThrow(
-      'plugins.json is version 1, but this needs version 2. Delete plugins.json and run `yarn run-cli init`',
+      `${file} is version 1, but this needs version 2. Delete ${file} and run \`yarn run-cli init\``,
     )
   })
 
@@ -60,10 +60,10 @@ describe('loadPlugins', () => {
     await expect(loadPlugins(file)).rejects.toThrow(UserError)
   })
 
-  it('rejects invalid JSON with a UserError instead of a raw SyntaxError', async () => {
+  it('rejects invalid JSON with a UserError naming the path instead of a raw SyntaxError', async () => {
     await fs.writeFile(file, '{not valid json')
     await expect(loadPlugins(file)).rejects.toThrow(UserError)
-    await expect(loadPlugins(file)).rejects.toThrow('plugins.json is not valid JSON')
+    await expect(loadPlugins(file)).rejects.toThrow(`${file} is not valid JSON`)
   })
 
   it('rejects a version 2 file that fails the schema with a UserError instead of a raw ZodError', async () => {

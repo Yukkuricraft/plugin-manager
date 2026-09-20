@@ -164,7 +164,7 @@ export async function loadPlugins(path: string): Promise<Plugins> {
     str = await fs.readFile(path, 'utf-8')
   } catch (e) {
     if (typeof e === 'object' && e && 'code' in e && e.code === 'ENOENT') {
-      throw new UserError('No plugins.json found. Run `yarn run-cli init` to create one')
+      throw new UserError(`No plugins.json found at ${path}. Run \`yarn run-cli init\` to create one there`)
     }
     throw e
   }
@@ -173,7 +173,7 @@ export async function loadPlugins(path: string): Promise<Plugins> {
   try {
     raw = JSON.parse(str)
   } catch (e) {
-    throw new UserError(`plugins.json is not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
+    throw new UserError(`${path} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
   }
 
   // Checked before parsing, so an old file gets a message saying what to do rather than a schema error
@@ -181,7 +181,7 @@ export async function loadPlugins(path: string): Promise<Plugins> {
   if (version !== pluginsFileVersion) {
     const found = typeof version === 'number' ? `version ${version}` : 'in an unrecognised format'
     throw new UserError(
-      `plugins.json is ${found}, but this needs version ${pluginsFileVersion}. Delete plugins.json and run \`yarn run-cli init\``,
+      `${path} is ${found}, but this needs version ${pluginsFileVersion}. Delete ${path} and run \`yarn run-cli init\``,
     )
   }
 

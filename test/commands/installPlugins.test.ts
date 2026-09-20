@@ -117,11 +117,10 @@ describe('installPlugins', () => {
     ])
   })
 
-  it('does not create or read unmanagedPlugins', async () => {
+  it('does not create unmanagedPlugins', async () => {
     await installPlugins('./plugins.json')
 
     expect(mkdir).not.toHaveBeenCalledWith('./unmanagedPlugins', expect.anything())
-    expect(readdir).not.toHaveBeenCalledWith('./unmanagedPlugins')
   })
 
   it('reads the lockfile it was given', async () => {

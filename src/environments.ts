@@ -52,15 +52,30 @@ async function readEnvironments(environmentsPath: string): Promise<Record<string
  *   defaultEnvironmentsPath) and returns the plugins.json inside that server's plugins directory.
  * - With neither flag, it falls back to defaultPluginsPath (the plugins.json in the current working directory).
  *
- * Throws UserError for anything a user needs to fix: environments.json missing or malformed, the name not defined
- * in it, or the directory it maps to missing or not actually a directory.
+ * A flag that's present but empty (e.g. `--env ""`, or `--env "$VAR"` with VAR unset) is a usage error, not the same
+ * as the flag being absent — otherwise it would silently fall back to defaultPluginsPath, which is exactly the wrong
+ * lockfile mix-up this function exists to prevent.
+ *
+ * Throws UserError for anything a user needs to fix: a flag given without a value, environments.json missing or
+ * malformed, the name not defined in it, or the directory it maps to missing or not actually a directory.
  */
 export async function resolvePluginsPath(
   flags: PluginsPathFlags,
   environmentsPath = defaultEnvironmentsPath,
 ): Promise<string> {
-  if (flags.pluginsJson) return flags.pluginsJson
-  if (!flags.env) return defaultPluginsPath
+  if (flags.pluginsJson !== undefined) {
+    if (flags.pluginsJson.trim() === '') {
+      throw new UserError('--plugins-json was given without a value. It needs the path to a plugins.json')
+    }
+    return flags.pluginsJson
+  }
+  if (flags.env !== undefined) {
+    if (flags.env.trim() === '') {
+      throw new UserError('--env was given without a value. It needs the name of a server in environments.json')
+    }
+  } else {
+    return defaultPluginsPath
+  }
 
   const all = await readEnvironments(environmentsPath)
   const dir = all[flags.env]

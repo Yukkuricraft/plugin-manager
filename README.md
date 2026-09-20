@@ -22,8 +22,14 @@ Commands:
   plugins completion                        generate completion script
 
 Options:
-  --help     Show help                                                 [boolean]
-  --version  Show version number                                       [boolean]
+  --env           The server to work on, by a name in environments.json, which
+                  maps names to server plugins directories. Its plugins.json is
+                  used.                                                 [string]
+  --plugins-json  The plugins.json to work on. Defaults to ./plugins.json. Use
+                  --env instead to name a server set up in environments.json.
+                                                                        [string]
+  --help          Show help                                            [boolean]
+  --version       Show version number                                  [boolean]
 ```
 
 ### Setting up
@@ -220,12 +226,14 @@ Whenever you add, remove or update a plugin, the changes will be reflected in pl
 file, and all installs will be validated against it. It usually lives in the server's own plugins directory rather than
 here — see "Working on another server".
 
-When you install plugins, two folders are created in this directory, whichever server the lockfile belongs to:
+When you install plugins, two folders are created in this directory — always here, in this tool's own directory, never
+in the targeted server's directory:
 
 - `managedPlugins` where downloaded plugins go, in a folder for each source: `managedPlugins/modrinth` and
   `managedPlugins/url`. A source only ever changes its own folder, and anything else in `managedPlugins` is deleted.
 - `plugins` the contents of each source's folder merged into one folder. It's only replaced once every download has
-  succeeded, so a failed install leaves the current plugins in place.
+  succeeded, so a failed install leaves whatever was already staged there in place — which may be from a different
+  server's lockfile if you last ran `install` against one.
 
 Both are rebuilt from the lockfile, so neither is worth keeping. `plugins` holds nothing but JARs: copy it into the
 server's plugins directory yourself, which adds and replaces JARs there and leaves that server's configs and data alone.
