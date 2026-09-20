@@ -8,7 +8,9 @@ import { parseUrlQuery, pinUrl } from './pin.js'
 import update from './update.js'
 import UrlPluginEntry from './urlPluginEntry.js'
 
-const urlSource: PluginSource<UrlPlugin> = {
+// `satisfies` (rather than a `: PluginSource<UrlPlugin>` annotation) keeps `listEntries`'s inferred
+// `UrlPluginEntry[]` return type, so callers can read `.substitutes` off the result.
+const urlSource = {
   prefix: 'url',
   async findPlugin(query: string, plugins: AllPlugins): Promise<{ plugin: UrlPlugin; id: string } | null> {
     const plugin = plugins.url[query]
@@ -23,7 +25,15 @@ const urlSource: PluginSource<UrlPlugin> = {
     }
   },
   listEntries(plugins: Plugins): UrlPluginEntry[] {
-    return Object.entries(plugins.all.url).map(([id, plugin]) => new UrlPluginEntry(id, plugin))
+    // Keyed by a url substitute's plugin ID, holding the slug of the project it replaces
+    const replacedSlugById = new Map(
+      Object.values(plugins.config.substitutes ?? {})
+        .filter((r) => r.substituteSource === 'url')
+        .map((r) => [r.substitute, r.slug]),
+    )
+    return Object.entries(plugins.all.url).map(
+      ([id, plugin]) => new UrlPluginEntry(id, plugin, replacedSlugById.get(id)),
+    )
   },
   async addPlugin(plugins: Plugins, pluginIndicator: string): Promise<boolean> {
     const { id, version, url } = parseUrlQuery(pluginIndicator)
@@ -49,6 +59,6 @@ const urlSource: PluginSource<UrlPlugin> = {
       delete plugins.all.url[id]
     }
   },
-}
+} satisfies PluginSource<UrlPlugin>
 
 export default urlSource

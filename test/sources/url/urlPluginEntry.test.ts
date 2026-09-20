@@ -56,4 +56,16 @@ describe('UrlPluginEntry', () => {
     expect(printed()).toContain('Pinned')
     expect(printed()).toContain('2026-09-19')
   })
+
+  it('tags a plugin that substitutes for another', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+
+    new UrlPluginEntry('FastAsyncWorldEdit', urlEntry(), 'worldedit').printCompact({
+      name: 30,
+      version: 8,
+      size: 8,
+    })
+
+    expect(log.mock.calls[0][0]).toContain('[substitutes worldedit]')
+  })
 })

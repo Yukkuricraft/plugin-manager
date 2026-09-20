@@ -23,7 +23,7 @@ describe('showPlugins', () => {
       config: {
         loader: 'paper',
         gameVersion: '1.21.4',
-        substitutes: { we: substituteRule() },
+        substitutes: { we: substituteRule({ substituteSource: 'modrinth' }) },
       },
       added: {},
       all: { modrinth: {}, url: {} },
@@ -34,6 +34,34 @@ describe('showPlugins', () => {
 
     const printed = vi.mocked(console.log).mock.calls.flat().join('\n')
     expect(printed).toContain('worldedit → fastasyncworldedit')
+    expect(printed).not.toContain('(url)')
+  })
+
+  it('marks a substitution by a url plugin', async () => {
+    const plugins: Plugins = {
+      version: 2,
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          we: {
+            slug: 'worldedit',
+            substitute: 'FastAsyncWorldEdit',
+            substituteSlug: 'FastAsyncWorldEdit',
+            substituteSource: 'url',
+          },
+        },
+      },
+      added: {},
+      all: { modrinth: {}, url: {} },
+    }
+    loadPlugins.mockResolvedValue(plugins)
+
+    await showPlugins('./plugins.json', false)
+
+    const printed = vi.mocked(console.log).mock.calls.flat().join('\n')
+    expect(printed).toContain('worldedit → FastAsyncWorldEdit')
+    expect(printed).toContain('(url)')
   })
 
   it('names the lockfile it read, above the server line', async () => {

@@ -71,3 +71,48 @@ describe('urlSource.addPlugin', () => {
     expect(locked.added['url:vault']).toBe('1.7.3')
   })
 })
+
+describe('urlSource.listEntries', () => {
+  it('tags the entry a url rule names', () => {
+    const p = plugins({
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          we: {
+            slug: 'worldedit',
+            substitute: 'FastAsyncWorldEdit',
+            substituteSlug: 'FastAsyncWorldEdit',
+            substituteSource: 'url',
+          },
+        },
+      },
+      all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry(), Vault: urlEntry() } },
+    })
+
+    const entries = urlSource.listEntries(p)
+
+    expect(entries.find((e) => e.name === 'FastAsyncWorldEdit')?.substitutes).toBe('worldedit')
+    expect(entries.find((e) => e.name === 'Vault')?.substitutes).toBeUndefined()
+  })
+
+  it('ignores a modrinth rule whose substitute id matches a url plugin', () => {
+    const p = plugins({
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          we: {
+            slug: 'worldedit',
+            substitute: 'fawe',
+            substituteSlug: 'fastasyncworldedit',
+            substituteSource: 'modrinth',
+          },
+        },
+      },
+      all: { modrinth: {}, url: { fawe: urlEntry() } },
+    })
+
+    expect(urlSource.listEntries(p)[0].substitutes).toBeUndefined()
+  })
+})
