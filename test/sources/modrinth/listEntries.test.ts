@@ -53,4 +53,29 @@ describe('listEntries', () => {
     expect(printed()).toContain('Substitutes')
     expect(printed()).toContain('worldedit')
   })
+
+  it('ignores a url rule whose substitute id matches a modrinth plugin', () => {
+    const p: Plugins = {
+      version: 2,
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          we: {
+            slug: 'worldedit',
+            substitute: 'fawe',
+            substituteSlug: 'FastAsyncWorldEdit',
+            substituteSource: 'url',
+          },
+        },
+      },
+      added: {},
+      all: {
+        modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) },
+        url: {},
+      },
+    }
+
+    expect(listEntries(p).find((e) => e.name === 'fastasyncworldedit')?.substitutes).toBeUndefined()
+  })
 })

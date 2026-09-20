@@ -266,6 +266,34 @@ describe('assertNoSubstitutedPluginsLocked', () => {
     }
     expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('fastasyncworldedit')
   })
+
+  it('tells the user when a rule points at a url plugin that is missing from plugins.json', () => {
+    const plugins = withLocked({})
+    plugins.config.substitutes = {
+      we: substituteRule({
+        substitute: 'FastAsyncWorldEdit',
+        substituteSlug: 'FastAsyncWorldEdit',
+        substituteSource: 'url',
+      }),
+    }
+
+    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow(UserError)
+    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('yarn run-cli add url:FastAsyncWorldEdit')
+  })
+
+  it('passes when a rule points at a url plugin that is present', () => {
+    const plugins = withLocked({})
+    plugins.config.substitutes = {
+      we: substituteRule({
+        substitute: 'FastAsyncWorldEdit',
+        substituteSlug: 'FastAsyncWorldEdit',
+        substituteSource: 'url',
+      }),
+    }
+    plugins.all.url = { FastAsyncWorldEdit: urlEntry() }
+
+    expect(() => assertNoSubstitutedPluginsLocked(plugins)).not.toThrow()
+  })
 })
 
 describe('assertNotSubstituting', () => {

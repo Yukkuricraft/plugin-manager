@@ -135,7 +135,8 @@ To drop a substitution:
 yarn run-cli substitute --remove worldedit
 ```
 
-Plugins already using the substitute keep it until they're next added or updated.
+Plugins already using the substitute keep it until they're next added or updated. `remove` refuses to remove the
+substitute itself, whether it's a Modrinth project or a url plugin, while the rule exists.
 
 A substitute can also be a url plugin, named with a `url:` prefix and already present in `plugins.json`:
 

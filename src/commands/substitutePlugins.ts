@@ -20,7 +20,9 @@ export default async function substitutePlugins(
     const rule = removeSubstitute(plugins, plugin)
     await writePlugins(plugins, pluginsPath)
     output.success(`Removed the substitution ${rule.slug} → ${rule.substituteSlug}`)
-    if (plugins.all.modrinth[rule.substitute]) {
+    const substituteStillPresent =
+      rule.substituteSource === 'url' ? plugins.all.url[rule.substitute] : plugins.all.modrinth[rule.substitute]
+    if (substituteStillPresent) {
       output.info(
         `Plugins using ${rule.substituteSlug} in place of ${rule.slug} keep it until they're next added or updated`,
       )

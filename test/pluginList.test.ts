@@ -4,12 +4,7 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { UserError } from '../src/errors.js'
-import {
-  loadPlugins,
-  type Plugins,
-  pluginsExist,
-  writePlugins,
-} from '../src/pluginList.js'
+import { loadPlugins, type Plugins, pluginsExist, writePlugins } from '../src/pluginList.js'
 import { modrinthEntry, substituteRule, urlEntry } from './testFixtures.js'
 
 let dir: string

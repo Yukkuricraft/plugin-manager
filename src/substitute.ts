@@ -10,7 +10,8 @@ async function findSubstitute(
 ): Promise<{ id: string; slug: string; source: 'modrinth' | 'url' }> {
   const { source, strippedQuery } = getPluginSource(query)
   if (source.prefix === 'url') {
-    if (!plugins.all.url[strippedQuery]) {
+    const urlPlugin = plugins.all.url[strippedQuery]
+    if (!urlPlugin) {
       throw new UserError(
         `No url plugin ${strippedQuery} in plugins.json. Run \`yarn run-cli add url:${strippedQuery}@<version>@<url>\` first`,
       )
@@ -103,25 +104,38 @@ export function removeSubstitute(plugins: Plugins, pluginQuery: string): Substit
 
 /**
  * Throws if the lockfile contains a project that a substitute rule replaces, since both it and its substitute would
- * then be installed. The commands never lock such a project, so this catches a plugins.json edited by hand, or a path
- * the commands missed. install runs it before touching the plugins folder.
+ * then be installed, or if a rule's url substitute is missing from plugins.json, which would leave every dependency
+ * on the replaced project unsatisfied. The commands never produce either state, so this catches a plugins.json edited
+ * by hand, or a path the commands missed. install runs it before touching the plugins folder.
  */
 export function assertNoSubstitutedPluginsLocked(plugins: Plugins) {
   const problems = Object.entries(plugins.config.substitutes ?? {}).flatMap(([id, rule]) => {
-    const entry = plugins.all.modrinth[id]
-    if (!entry) return []
+    const ruleProblems: string[] = []
 
-    const dependants = dependantNames(plugins.all.modrinth, entry)
-    if (isAddedModrinthPlugin(plugins, entry) || dependants.length === 0) {
-      return [
-        `${rule.slug} is in plugins.json, but it's substituted by ${rule.substituteSlug}. Run \`yarn run-cli remove ${rule.slug}\``,
-      ]
+    const entry = plugins.all.modrinth[id]
+    if (entry) {
+      const dependants = dependantNames(plugins.all.modrinth, entry)
+      if (isAddedModrinthPlugin(plugins, entry) || dependants.length === 0) {
+        ruleProblems.push(
+          `${rule.slug} is in plugins.json, but it's substituted by ${rule.substituteSlug}. Run \`yarn run-cli remove ${rule.slug}\``,
+        )
+      } else {
+        const names = dependants.join(', ')
+        ruleProblems.push(
+          `${rule.slug} is in plugins.json as a dependency of ${names}, but it's substituted by ${rule.substituteSlug}. ` +
+            `Remove and re-add ${names} to pick up ${rule.substituteSlug}, or run \`yarn run-cli substitute --remove ${rule.slug}\``,
+        )
+      }
     }
-    const names = dependants.join(', ')
-    return [
-      `${rule.slug} is in plugins.json as a dependency of ${names}, but it's substituted by ${rule.substituteSlug}. ` +
-        `Remove and re-add ${names} to pick up ${rule.substituteSlug}, or run \`yarn run-cli substitute --remove ${rule.slug}\``,
-    ]
+
+    if (rule.substituteSource === 'url' && !plugins.all.url[rule.substitute]) {
+      ruleProblems.push(
+        `${rule.substituteSlug} substitutes for ${rule.slug}, but no url plugin ${rule.substituteSlug} is in plugins.json. ` +
+          `Run \`yarn run-cli add url:${rule.substitute}@<version>@<url>\`, or \`yarn run-cli substitute --remove ${rule.slug}\``,
+      )
+    }
+
+    return ruleProblems
   })
   if (problems.length > 0) throw new UserError(`Refusing to install:\n${problems.join('\n')}`)
 }

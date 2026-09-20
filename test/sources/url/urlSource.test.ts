@@ -38,7 +38,7 @@ describe('urlSource.addPlugin', () => {
   it('pins the file and records the version as the added value', async () => {
     const locked = plugins()
 
-    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(true)
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`)).resolves.toBe(true)
 
     expect(locked.added).toEqual({ 'url:vault': '1.7.3' })
     expect(locked.all.url.vault).toEqual({
@@ -56,7 +56,7 @@ describe('urlSource.addPlugin', () => {
       all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.3' }) } },
     })
 
-    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(false)
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`)).resolves.toBe(false)
     expect(inspectDownload).not.toHaveBeenCalled()
   })
 
@@ -66,7 +66,7 @@ describe('urlSource.addPlugin', () => {
       all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.2' }) } },
     })
 
-    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(true)
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`)).resolves.toBe(true)
     expect(inspectDownload).toHaveBeenCalledOnce()
     expect(locked.added['url:vault']).toBe('1.7.3')
   })
