@@ -132,6 +132,7 @@ export const output = {
     version?: string
     versionType?: string
     loaders?: string[]
+    installPath?: string
     filename?: string
     size?: number
     sha512?: string
@@ -178,6 +179,10 @@ export const output = {
     }
     if (data.substitutes) {
       console.log(`   ${this.label('Substitutes')} ${chalk.cyanBright(data.substitutes)}`)
+    }
+    // Shown only when the plugin installs into a subdirectory of the plugins folder
+    if (data.installPath) {
+      console.log(`   ${this.label('Path')} ${chalk.yellowBright(data.installPath)}`)
     }
     if (data.filename) {
       const size = data.size === undefined ? '' : ` ${this.dim(`(${formatSize(data.size)})`)}`

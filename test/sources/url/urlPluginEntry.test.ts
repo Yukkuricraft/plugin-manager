@@ -12,6 +12,16 @@ const vault = urlEntry({
   pinnedAt: '2026-09-19T12:00:00Z',
 })
 
+const essentials = urlEntry({
+  url: 'https://files.example/Essentials.jar',
+  version: '2.20.1',
+  filename: 'Essentials.jar',
+  sha512: 'sha512-essentials',
+  size: 24000,
+  pinnedAt: '2026-09-19T12:00:00Z',
+  overrides: { path: 'PlaceholderAPI/expansions' },
+})
+
 function printed() {
   return vi.mocked(console.log).mock.calls.flat().join('\n')
 }
@@ -55,5 +65,25 @@ describe('UrlPluginEntry', () => {
 
     expect(printed()).toContain('Pinned')
     expect(printed()).toContain('2026-09-19')
+  })
+
+  it('shows where an overridden plugin lands in the compact view', () => {
+    const entry = new UrlPluginEntry('essentials', essentials)
+    entry.printCompact(entry.columnWidths())
+
+    expect(printed()).toContain('PlaceholderAPI/expansions/Essentials.jar')
+  })
+
+  it('shows the path on the verbose card of an overridden plugin', () => {
+    new UrlPluginEntry('essentials', essentials).printVerbose()
+
+    expect(printed()).toContain('Path')
+    expect(printed()).toContain('PlaceholderAPI/expansions')
+  })
+
+  it('leaves the path line off the card of a plugin without an override', () => {
+    new UrlPluginEntry('vault', vault).printVerbose()
+
+    expect(printed()).not.toContain('Path')
   })
 })
