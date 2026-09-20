@@ -1,12 +1,34 @@
 import { dependantNames, isAddedModrinthPlugin, type Plugins, type SubstituteRule } from './pluginList.js'
+import { getPluginSource } from './sources/pluginSource.js'
 import { findProject } from './sources/modrinth/utils.js'
 import { UserError } from './errors.js'
 
+/** The substitute side of a rule, resolved from a query that may carry a `url:` prefix */
+async function findSubstitute(
+  plugins: Plugins,
+  query: string,
+): Promise<{ id: string; slug: string; source: 'modrinth' | 'url' }> {
+  const { source, strippedQuery } = getPluginSource(query)
+  if (source.prefix === 'url') {
+    if (!plugins.all.url[strippedQuery]) {
+      throw new UserError(
+        `No url plugin ${strippedQuery} in plugins.json. Run \`yarn run-cli add url:${strippedQuery}@<version>@<url>\` first`,
+      )
+    }
+    // A url plugin's key is both its ID and the name it's shown under
+    return { id: strippedQuery, slug: strippedQuery, source: 'url' }
+  }
+
+  const project = await findProject(strippedQuery)
+  return { ...project, source: 'modrinth' }
+}
+
 /**
- * Records that the project `substituteQuery` names satisfies every required dependency on the project `pluginQuery`
- * names, and returns the rule. Both are Modrinth slugs or IDs.
+ * Records that the project or url plugin `substituteQuery` names satisfies every required dependency on the Modrinth
+ * project `pluginQuery` names, and returns the rule. `pluginQuery` is a Modrinth slug or ID; `substituteQuery` is a
+ * Modrinth slug or ID, or a `url:`-prefixed url plugin key.
  *
- * Refuses when either project is already part of a substitution, so rules never chain. Also refuses when the project
+ * Refuses when either side is already part of a substitution, so rules never chain. Also refuses when the project
  * being replaced is already in the lockfile, since it and its substitute would both be installed.
  */
 export async function declareSubstitute(
@@ -15,16 +37,26 @@ export async function declareSubstitute(
   substituteQuery: string,
 ): Promise<SubstituteRule> {
   const plugin = await findProject(pluginQuery)
-  const substitute = await findProject(substituteQuery)
-  if (plugin.id === substitute.id) throw new UserError(`${plugin.slug} can't substitute for itself`)
+  const substitute = await findSubstitute(plugins, substituteQuery)
+  if (substitute.source === 'modrinth' && plugin.id === substitute.id) {
+    throw new UserError(`${plugin.slug} can't substitute for itself`)
+  }
 
   const rules = plugins.config.substitutes ?? {}
-  for (const project of [plugin, substitute]) {
-    const existing = Object.entries(rules).find(([id, rule]) => id === project.id || rule.substitute === project.id)
+  const parties: { id: string; slug: string; source: 'modrinth' | 'url' }[] = [
+    { ...plugin, source: 'modrinth' },
+    substitute,
+  ]
+  for (const party of parties) {
+    const existing = Object.entries(rules).find(
+      ([id, rule]) =>
+        (party.source === 'modrinth' && id === party.id) ||
+        (rule.substituteSource === party.source && rule.substitute === party.id),
+    )
     if (existing) {
       const [, rule] = existing
       throw new UserError(
-        `${project.slug} is already in the substitution ${rule.slug} → ${rule.substituteSlug}. Run \`yarn run-cli substitute --remove ${rule.slug}\` first`,
+        `${party.slug} is already in the substitution ${rule.slug} → ${rule.substituteSlug}. Run \`yarn run-cli substitute --remove ${rule.slug}\` first`,
       )
     }
   }
@@ -47,7 +79,7 @@ export async function declareSubstitute(
     slug: plugin.slug,
     substitute: substitute.id,
     substituteSlug: substitute.slug,
-    substituteSource: 'modrinth',
+    substituteSource: substitute.source,
   }
   plugins.config.substitutes = { ...rules, [plugin.id]: rule }
   return rule

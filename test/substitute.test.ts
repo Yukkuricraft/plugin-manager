@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { UserError } from '../src/errors.js'
 import { type Plugins, type SubstituteRule } from '../src/pluginList.js'
-import { modrinthEntry, substituteRule } from './testFixtures.js'
+import { modrinthEntry, substituteRule, urlEntry } from './testFixtures.js'
 import { assertNoSubstitutedPluginsLocked, declareSubstitute, removeSubstitute } from '../src/substitute.js'
 
 const { get } = vi.hoisted(() => ({ get: vi.fn() }))
@@ -130,6 +130,63 @@ describe('declareSubstitute', () => {
       'worldedit is locked as a dependency of craftbook',
     )
     expect(p.config.substitutes).toBeUndefined()
+  })
+
+  it('records a url plugin as the substitute', async () => {
+    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() } } })
+
+    const rule = await declareSubstitute(p, 'worldedit', 'url:FastAsyncWorldEdit')
+
+    expect(rule).toEqual({
+      slug: 'worldedit',
+      substitute: 'FastAsyncWorldEdit',
+      substituteSlug: 'FastAsyncWorldEdit',
+      substituteSource: 'url',
+    })
+    expect(p.config.substitutes).toEqual({ we: rule })
+  })
+
+  it('looks up the replaced project but not the url plugin', async () => {
+    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() } } })
+
+    await declareSubstitute(p, 'worldedit', 'url:FastAsyncWorldEdit')
+
+    expect(get).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses a url plugin that is not in plugins.json', async () => {
+    const p = plugins()
+
+    await expect(declareSubstitute(p, 'worldedit', 'url:FastAsyncWorldEdit')).rejects.toThrow(UserError)
+    await expect(declareSubstitute(p, 'worldedit', 'url:FastAsyncWorldEdit')).rejects.toThrow(
+      'yarn run-cli add url:FastAsyncWorldEdit',
+    )
+    expect(p.config.substitutes).toBeUndefined()
+  })
+
+  it('refuses a url plugin that already substitutes for something', async () => {
+    const p = withRules({
+      other: substituteRule({
+        slug: 'other',
+        substitute: 'FastAsyncWorldEdit',
+        substituteSlug: 'FastAsyncWorldEdit',
+        substituteSource: 'url',
+      }),
+    })
+    p.all.url = { FastAsyncWorldEdit: urlEntry() }
+
+    await expect(declareSubstitute(p, 'worldedit', 'url:FastAsyncWorldEdit')).rejects.toThrow(UserError)
+  })
+
+  it('lets a url plugin substitute for a project whose id matches a modrinth substitute', async () => {
+    const p = withRules({
+      other: substituteRule({ slug: 'other', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' }),
+    })
+    p.all.url = { fawe: urlEntry() }
+
+    const rule = await declareSubstitute(p, 'worldedit', 'url:fawe')
+
+    expect(rule.substituteSource).toBe('url')
   })
 })
 
