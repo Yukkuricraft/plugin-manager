@@ -3,10 +3,12 @@ import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { UserError } from '../src/errors.js'
+import { UserError, ValidationError } from '../src/errors.js'
 import {
   assertNoSubstitutedPluginsLocked,
+  isCanonicalInstallPath,
   loadPlugins,
+  normalizeInstallPath,
   type Plugins,
   pluginsExist,
   writePlugins,
@@ -41,6 +43,47 @@ const v2: Plugins = {
     url: {},
   },
 }
+
+describe('normalizeInstallPath', () => {
+  it.each([
+    ['a plain directory', 'expansions', 'expansions'],
+    ['a nested directory', 'PlaceholderAPI/expansions', 'PlaceholderAPI/expansions'],
+    ['a trailing slash', 'PlaceholderAPI/expansions/', 'PlaceholderAPI/expansions'],
+    ['surrounding whitespace', '  PlaceholderAPI/expansions  ', 'PlaceholderAPI/expansions'],
+  ])('accepts %s', (_, raw, expected) => {
+    expect(normalizeInstallPath(raw)).toBe(expected)
+  })
+
+  it.each([
+    ['an empty path', ''],
+    ['whitespace alone', '   '],
+    ['an absolute path', '/var/lib/plugins/expansions'],
+    ['a parent segment', 'PlaceholderAPI/../../etc'],
+    ['a current segment', 'PlaceholderAPI/./expansions'],
+    ['a repeated slash', 'PlaceholderAPI//expansions'],
+    ['a backslash', 'PlaceholderAPI\\expansions'],
+  ])('rejects %s', (_, raw) => {
+    expect(() => normalizeInstallPath(raw)).toThrow(ValidationError)
+  })
+
+  it('names the path it rejected and gives an example', () => {
+    expect(() => normalizeInstallPath('/etc')).toThrow('"/etc"')
+    expect(() => normalizeInstallPath('/etc')).toThrow('PlaceholderAPI/expansions')
+  })
+})
+
+describe('isCanonicalInstallPath', () => {
+  it('accepts what normalizeInstallPath returns', () => {
+    expect(isCanonicalInstallPath('PlaceholderAPI/expansions')).toBe(true)
+  })
+
+  it.each([['PlaceholderAPI/expansions/'], ['  expansions'], ['../etc'], ['']])(
+    'rejects %s, which the lockfile should never hold',
+    (raw) => {
+      expect(isCanonicalInstallPath(raw)).toBe(false)
+    },
+  )
+})
 
 describe('loadPlugins', () => {
   it('rejects a missing file, naming the path and pointing at init', async () => {
@@ -133,6 +176,45 @@ describe('loadPlugins', () => {
         all: { modrinth: {}, url: { vault: unpinned } },
       }),
     )
+    await expect(loadPlugins(file)).rejects.toThrow("plugins.json doesn't match the expected format")
+  })
+
+  it('reads a url entry with a path override', async () => {
+    const withPath: Plugins = {
+      ...v2,
+      all: {
+        modrinth: {},
+        url: { essentials: urlEntry({ overrides: { path: 'PlaceholderAPI/expansions' } }) },
+      },
+    }
+    await writePlugins(withPath, file)
+
+    expect(await loadPlugins(file)).toEqual(withPath)
+  })
+
+  it('rejects a path override the tool would never write', async () => {
+    const raw = {
+      version: 2,
+      config: { loader: 'paper', gameVersion: '1.21.1' },
+      added: {},
+      all: {
+        modrinth: {},
+        url: {
+          essentials: {
+            source: 'url',
+            url: 'https://files.example/Essentials.jar',
+            version: '1.0.0',
+            filename: 'Essentials.jar',
+            sha512: 'sha512-essentials',
+            size: 1,
+            pinnedAt: '2026-01-01T00:00:00Z',
+            overrides: { path: '../../etc' },
+          },
+        },
+      },
+    }
+    await fs.writeFile(file, JSON.stringify(raw))
+
     await expect(loadPlugins(file)).rejects.toThrow("plugins.json doesn't match the expected format")
   })
 })

@@ -3,7 +3,7 @@ import fs from 'fs/promises'
 import z from 'zod'
 
 import { allLoaders } from './sources/modrinth/loaders.js'
-import { UserError } from './errors.js'
+import { UserError, ValidationError } from './errors.js'
 
 export const pluginsFileVersion = 2
 export const defaultPluginsPath = './plugins.json'
@@ -38,6 +38,45 @@ export const pluginOverrides = z.object({
   gameVersion: z.string().optional(),
 })
 export type PluginOverrides = z.infer<typeof pluginOverrides>
+
+/**
+ * The canonical form of `raw` as a directory inside the plugins folder: surrounding whitespace and a trailing slash
+ * removed. Throws unless it's relative, / separated and free of . and .. segments, so an install can't write outside
+ * the plugins folder.
+ */
+export function normalizeInstallPath(raw: string): string {
+  const trimmed = raw.trim().replace(/\/$/, '')
+  const segments = trimmed.split('/')
+  if (trimmed.includes('\\') || segments.some((s) => s === '' || s === '.' || s === '..')) {
+    throw new ValidationError(
+      `Invalid path ${JSON.stringify(raw)}. It must name a directory inside the plugins folder, such as "PlaceholderAPI/expansions"`,
+    )
+  }
+  return trimmed
+}
+
+/** Whether `path` is already what normalizeInstallPath returns for it, which is the only form the lockfile holds */
+export function isCanonicalInstallPath(path: string): boolean {
+  try {
+    return normalizeInstallPath(path) === path
+  } catch {
+    return false
+  }
+}
+
+/**
+ * A directory inside the plugins folder, for a JAR the server loads from somewhere other than the plugins folder
+ * itself, such as a PlaceholderAPI expansion
+ */
+export const installPath = z.string().refine(isCanonicalInstallPath, {
+  message: 'must name a directory inside the plugins folder, relative and / separated, with no . or .. segment',
+})
+
+/** How a url plugin is installed differently from the default */
+export const urlPluginOverrides = z.object({
+  path: installPath.optional(),
+})
+export type UrlPluginOverrides = z.infer<typeof urlPluginOverrides>
 
 export const modrinthPlugin = z.object({
   source: z.literal('modrinth'),
@@ -77,6 +116,7 @@ export const urlPlugin = z.object({
   sha512: z.string(),
   size: z.number(),
   pinnedAt: z.string(),
+  overrides: urlPluginOverrides.optional(),
 })
 export type UrlPlugin = z.infer<typeof urlPlugin>
 
