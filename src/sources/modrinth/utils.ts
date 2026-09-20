@@ -64,6 +64,16 @@ export interface DependencyContext {
   locked?: AllModrinthPlugins
 }
 
+/** Looks up a Modrinth project by slug or ID, for its ID and current slug */
+export async function findProject(query: string): Promise<{ id: string; slug: string }> {
+  const res = await client.GET('/project/{id|slug}', { params: { path: { 'id|slug': query } } })
+  if (!res.data) {
+    if (res.response.status === 404) throw new UserError(`No Modrinth project found for ${query}`)
+    throw new RequestError('Failed to get project', { cause: res.error })
+  }
+  return { id: res.data.id, slug: res.data.slug ?? res.data.id }
+}
+
 export async function getDependencyInfo(
   dep: components['schemas']['VersionDependency'],
   loader: Loader,

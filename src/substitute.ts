@@ -1,16 +1,6 @@
-import { dependantNames, isAddedModrinthPlugin, type Plugins, type SubstituteRule } from '../../pluginList.js'
-import client from './client.js'
-import { RequestError, UserError } from '../../errors.js'
-
-/** Looks up a Modrinth project by slug or ID, for its ID and current slug */
-async function findProject(query: string): Promise<{ id: string; slug: string }> {
-  const res = await client.GET('/project/{id|slug}', { params: { path: { 'id|slug': query } } })
-  if (!res.data) {
-    if (res.response.status === 404) throw new UserError(`No Modrinth project found for ${query}`)
-    throw new RequestError('Failed to get project', { cause: res.error })
-  }
-  return { id: res.data.id, slug: res.data.slug ?? res.data.id }
-}
+import { dependantNames, isAddedModrinthPlugin, type Plugins, type SubstituteRule } from './pluginList.js'
+import { findProject } from './sources/modrinth/utils.js'
+import { UserError } from './errors.js'
 
 /**
  * Records that the project `substituteQuery` names satisfies every required dependency on the project `pluginQuery`
@@ -77,4 +67,29 @@ export function removeSubstitute(plugins: Plugins, pluginQuery: string): Substit
   delete rules[id]
   plugins.config.substitutes = Object.keys(rules).length > 0 ? rules : undefined
   return rule
+}
+
+/**
+ * Throws if the lockfile contains a project that a substitute rule replaces, since both it and its substitute would
+ * then be installed. The commands never lock such a project, so this catches a plugins.json edited by hand, or a path
+ * the commands missed. install runs it before touching the plugins folder.
+ */
+export function assertNoSubstitutedPluginsLocked(plugins: Plugins) {
+  const problems = Object.entries(plugins.config.substitutes ?? {}).flatMap(([id, rule]) => {
+    const entry = plugins.all.modrinth[id]
+    if (!entry) return []
+
+    const dependants = dependantNames(plugins.all.modrinth, entry)
+    if (isAddedModrinthPlugin(plugins, entry) || dependants.length === 0) {
+      return [
+        `${rule.slug} is in plugins.json, but it's substituted by ${rule.substituteSlug}. Run \`yarn run-cli remove ${rule.slug}\``,
+      ]
+    }
+    const names = dependants.join(', ')
+    return [
+      `${rule.slug} is in plugins.json as a dependency of ${names}, but it's substituted by ${rule.substituteSlug}. ` +
+        `Remove and re-add ${names} to pick up ${rule.substituteSlug}, or run \`yarn run-cli substitute --remove ${rule.slug}\``,
+    ]
+  })
+  if (problems.length > 0) throw new UserError(`Refusing to install:\n${problems.join('\n')}`)
 }

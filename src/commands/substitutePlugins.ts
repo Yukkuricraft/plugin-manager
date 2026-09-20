@@ -1,5 +1,5 @@
 import { loadPlugins, writePlugins } from '../pluginList.js'
-import { declareSubstitute, removeSubstitute } from '../sources/modrinth/substitute.js'
+import { declareSubstitute, removeSubstitute } from '../substitute.js'
 import { UserError } from '../errors.js'
 import { output } from '../utils/output.js'
 

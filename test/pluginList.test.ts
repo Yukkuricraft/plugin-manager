@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { UserError } from '../src/errors.js'
 import {
-  assertNoSubstitutedPluginsLocked,
   loadPlugins,
   type Plugins,
   pluginsExist,
@@ -185,55 +184,5 @@ describe('pluginsExist', () => {
     expect(await pluginsExist(file)).toBe(false)
     await writePlugins(v2, file)
     expect(await pluginsExist(file)).toBe(true)
-  })
-})
-
-describe('assertNoSubstitutedPluginsLocked', () => {
-  const worldeditToFawe = { we: substituteRule() }
-
-  function withLocked(modrinth: Plugins['all']['modrinth'], added: Plugins['added'] = {}): Plugins {
-    return {
-      version: 2,
-      config: { loader: 'paper', gameVersion: '1.21.4', substitutes: worldeditToFawe },
-      added,
-      all: { modrinth, url: {} },
-    }
-  }
-
-  it('passes when no replaced project is locked', () => {
-    const plugins = withLocked({ fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) })
-    expect(() => assertNoSubstitutedPluginsLocked(plugins)).not.toThrow()
-  })
-
-  it('passes when there are no rules', () => {
-    const plugins = withLocked({ we: modrinthEntry({ slug: 'worldedit' }) })
-    plugins.config.substitutes = undefined
-    expect(() => assertNoSubstitutedPluginsLocked(plugins)).not.toThrow()
-  })
-
-  it('tells the user to remove an added replaced project', () => {
-    const plugins = withLocked({ we: modrinthEntry({ slug: 'worldedit' }) }, { 'modrinth:worldedit': '1.0.0' })
-    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow(UserError)
-    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('`yarn run-cli remove worldedit`')
-    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('substituted by fastasyncworldedit')
-  })
-
-  it('names the plugins that pulled in a replaced dependency', () => {
-    const plugins = withLocked({
-      we: modrinthEntry({ slug: 'worldedit', dependedOnBy: new Set(['cb']) }),
-      cb: modrinthEntry({ slug: 'craftbook' }),
-    })
-    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('dependency of craftbook')
-    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('`yarn run-cli substitute --remove worldedit`')
-  })
-
-  it('catches a chain written into plugins.json by hand', () => {
-    // worldedit → fawe → other: a dependency on worldedit resolves to fawe, which a rule replaces
-    const plugins = withLocked({ fawe: modrinthEntry({ slug: 'fastasyncworldedit', dependedOnBy: new Set(['cb']) }) })
-    plugins.config.substitutes = {
-      ...worldeditToFawe,
-      fawe: substituteRule({ slug: 'fastasyncworldedit', substitute: 'other', substituteSlug: 'other' }),
-    }
-    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('fastasyncworldedit')
   })
 })

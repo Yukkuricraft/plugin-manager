@@ -112,31 +112,6 @@ export function dependantNames(all: AllModrinthPlugins, entry: ModrinthPlugin): 
   return [...entry.dependedOnBy].map((id) => all[id]?.slug ?? id).sort()
 }
 
-/**
- * Throws if the lockfile contains a project that a substitute rule replaces, since both it and its substitute would
- * then be installed. The commands never lock such a project, so this catches a plugins.json edited by hand, or a path
- * the commands missed. install runs it before touching the plugins folder.
- */
-export function assertNoSubstitutedPluginsLocked(plugins: Plugins) {
-  const problems = Object.entries(plugins.config.substitutes ?? {}).flatMap(([id, rule]) => {
-    const entry = plugins.all.modrinth[id]
-    if (!entry) return []
-
-    const dependants = dependantNames(plugins.all.modrinth, entry)
-    if (isAddedModrinthPlugin(plugins, entry) || dependants.length === 0) {
-      return [
-        `${rule.slug} is in plugins.json, but it's substituted by ${rule.substituteSlug}. Run \`yarn run-cli remove ${rule.slug}\``,
-      ]
-    }
-    const names = dependants.join(', ')
-    return [
-      `${rule.slug} is in plugins.json as a dependency of ${names}, but it's substituted by ${rule.substituteSlug}. ` +
-        `Remove and re-add ${names} to pick up ${rule.substituteSlug}, or run \`yarn run-cli substitute --remove ${rule.slug}\``,
-    ]
-  })
-  if (problems.length > 0) throw new UserError(`Refusing to install:\n${problems.join('\n')}`)
-}
-
 function sortObj<A extends object>(obj: A): A {
   const res = {} as A
   Object.entries(obj)
