@@ -1,5 +1,5 @@
 import { createWriteStream, createReadStream } from 'node:fs'
-import { rm } from 'node:fs/promises'
+import { readdir, rm, rmdir } from 'node:fs/promises'
 import { finished } from 'node:stream/promises'
 import { Readable } from 'node:stream'
 import type { ReadableStream } from 'node:stream/web'
@@ -185,6 +185,36 @@ export function fileHash(file: string) {
       })
     })
   })
+}
+
+/**
+ * Every file under `dir`, as a / separated path relative to `dir`, sorted. Directories are left out, so an empty one
+ * doesn't appear in the listing.
+ */
+export async function listFiles(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { recursive: true, withFileTypes: true })
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.relative(dir, path.join(entry.parentPath, entry.name)).split(path.sep).join('/'))
+    .sort()
+}
+
+/** Removes every empty directory under `dir`, deepest first, so one left holding only empty directories goes too */
+export async function pruneEmptyDirs(dir: string): Promise<void> {
+  const entries = await readdir(dir, { recursive: true, withFileTypes: true })
+  const dirs = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(entry.parentPath, entry.name))
+    .sort((a, b) => b.length - a.length)
+
+  for (const candidate of dirs) {
+    try {
+      await rmdir(candidate)
+    } catch (e) {
+      // Whatever is still in the directory belongs to someone, so leaving it is the outcome wanted
+      if (!(typeof e === 'object' && e && 'code' in e && e.code === 'ENOTEMPTY')) throw e
+    }
+  }
 }
 
 export function validateUrl(url: string) {

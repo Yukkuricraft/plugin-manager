@@ -1,11 +1,18 @@
 import { createHash } from 'node:crypto'
-import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HashMismatchError, RequestError, UserError } from '../../src/errors.js'
-import { downloadFile, fetchWithAuth, inspectDownload, type HostTable } from '../../src/utils/files.js'
+import {
+  downloadFile,
+  fetchWithAuth,
+  inspectDownload,
+  listFiles,
+  pruneEmptyDirs,
+  type HostTable,
+} from '../../src/utils/files.js'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -228,5 +235,89 @@ describe('inspectDownload', () => {
     const pin = await inspectDownload('https://files.example/Vault.jar', {}, 'remisux')
 
     expect(pin.filename).toBe('Vault.jar')
+  })
+})
+
+describe('listFiles', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), 'list-files-'))
+  })
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('returns nothing for an empty directory', async () => {
+    expect(await listFiles(dir)).toEqual([])
+  })
+
+  it('lists nested files as / separated paths relative to the directory, sorted', async () => {
+    await mkdir(path.join(dir, 'PlaceholderAPI', 'expansions'), { recursive: true })
+    await writeFile(path.join(dir, 'Vault.jar'), 'vault')
+    await writeFile(path.join(dir, 'PlaceholderAPI', 'expansions', 'Essentials.jar'), 'essentials')
+
+    expect(await listFiles(dir)).toEqual(['PlaceholderAPI/expansions/Essentials.jar', 'Vault.jar'])
+  })
+
+  it('leaves directories out of the listing', async () => {
+    await mkdir(path.join(dir, 'empty'), { recursive: true })
+
+    expect(await listFiles(dir)).toEqual([])
+  })
+})
+
+describe('pruneEmptyDirs', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), 'prune-dirs-'))
+  })
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('removes an empty directory', async () => {
+    await mkdir(path.join(dir, 'expansions'))
+
+    await pruneEmptyDirs(dir)
+
+    expect(await readdir(dir)).toEqual([])
+  })
+
+  it('removes a directory left empty by removing the one inside it', async () => {
+    await mkdir(path.join(dir, 'PlaceholderAPI', 'expansions'), { recursive: true })
+
+    await pruneEmptyDirs(dir)
+
+    expect(await readdir(dir)).toEqual([])
+  })
+
+  it('keeps a directory holding a file, and the directories above it', async () => {
+    await mkdir(path.join(dir, 'PlaceholderAPI', 'expansions'), { recursive: true })
+    await writeFile(path.join(dir, 'PlaceholderAPI', 'expansions', 'Essentials.jar'), 'essentials')
+
+    await pruneEmptyDirs(dir)
+
+    expect(await listFiles(dir)).toEqual(['PlaceholderAPI/expansions/Essentials.jar'])
+  })
+
+  it('keeps the directory it was given', async () => {
+    await pruneEmptyDirs(dir)
+
+    expect(await readdir(dir)).toEqual([])
+  })
+
+  it('removes an empty directory without disturbing a sibling that holds a file', async () => {
+    await mkdir(path.join(dir, 'a'))
+    await mkdir(path.join(dir, 'b'))
+    await writeFile(path.join(dir, 'b', 'file.txt'), 'contents')
+
+    await pruneEmptyDirs(dir)
+
+    expect(await readdir(dir)).toEqual(['b'])
+    expect(await listFiles(dir)).toEqual(['b/file.txt'])
   })
 })
