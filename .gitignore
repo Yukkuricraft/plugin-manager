@@ -1,5 +1,6 @@
 node_modules
 plugins.json
+environments.json
 plugins
 managedPlugins
 unmanagedPlugins
