@@ -16,14 +16,23 @@ import { installedPath } from './pin.js'
 export default async function install(plugins: AllPlugins, dir: string): Promise<void> {
   const entries = Object.entries(plugins.url)
 
-  // The downloads below run in Promise.all, so two entries landing on one path would overwrite each other. add
-  // refuses that pairing, so hitting it here means plugins.json was edited by hand
-  const owners = new Map<string, string>()
+  // The downloads below run in Promise.all, so two entries landing on one path would overwrite each other, and one
+  // landing on a path another needs as a directory - e.g. X.jar and a path override of X.jar - would clash on disk.
+  // add refuses both pairings, so hitting either here means plugins.json was edited by hand
+  const owners: { target: string; id: string }[] = []
   for (const [id, plugin] of entries) {
     const target = installedPath(plugin.filename, plugin.overrides?.path)
-    const other = owners.get(target)
-    if (other) throw new UserError(`Refusing to install: ${other} and ${id} are both installed to ${target}`)
-    owners.set(target, id)
+    for (const other of owners) {
+      if (other.target === target) {
+        throw new UserError(`Refusing to install: ${other.id} and ${id} are both installed to ${target}`)
+      }
+      if (target.startsWith(`${other.target}/`) || other.target.startsWith(`${target}/`)) {
+        throw new UserError(
+          `Refusing to install: ${other.id} is installed to ${other.target}, which clashes with ${id} at ${target}`,
+        )
+      }
+    }
+    owners.push({ target, id })
   }
 
   const kept = new Set<string>()

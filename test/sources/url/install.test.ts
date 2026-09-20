@@ -154,4 +154,20 @@ describe('url install', () => {
 
     expect(await listFiles(dir)).toEqual(['Stray.jar'])
   })
+
+  it('refuses an entry installed where another needs a directory of the same name, before deleting anything', async () => {
+    await writeFile(path.join(dir, 'Stray.jar'), 'stray')
+    const expansion = urlEntry({
+      url: 'https://files.example/other/PlaceholderExpansion.jar',
+      filename: 'PlaceholderExpansion.jar',
+      overrides: { path: 'Vault.jar' },
+    })
+
+    const error = await install(plugins({ vault, expansion }), dir).catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(UserError)
+    expect((error as Error).message).toContain('Vault.jar')
+    expect((error as Error).message).toContain('Vault.jar/PlaceholderExpansion.jar')
+    expect(await listFiles(dir)).toEqual(['Stray.jar'])
+  })
 })

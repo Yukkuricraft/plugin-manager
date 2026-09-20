@@ -15,19 +15,37 @@ function stagingDir(source: PluginSource) {
 }
 
 /**
- * Throws if two sources staged a file at the same path, since one would overwrite the other in the plugins folder.
- * add refuses a path another plugin already uses, so this catches a plugins.json edited by hand.
+ * Throws if two sources staged a file at the same path, since one would overwrite the other in the plugins folder,
+ * or if one staged a file at a path another staged a directory under - e.g. X.jar staged as a file by one source and
+ * X.jar/e.jar staged by another - since fs.cp would fail on that clash after ./plugins is already being rebuilt. add
+ * refuses both pairings, so this catches only a plugins.json edited by hand.
  */
 async function assertNoSharedPaths() {
-  const stagedBy = new Map<string, string>()
-  const problems: string[] = []
+  const staged: { file: string; source: string }[] = []
   for (const source of allPluginSources) {
-    for (const file of await listFiles(stagingDir(source))) {
-      const other = stagedBy.get(file)
-      if (other) problems.push(`${file} is downloaded by both ${other} and ${source.prefix}`)
-      else stagedBy.set(file, source.prefix)
+    for (const file of await listFiles(stagingDir(source))) staged.push({ file, source: source.prefix })
+  }
+
+  const problems: string[] = []
+
+  const stagedBy = new Map<string, string>()
+  for (const { file, source } of staged) {
+    const other = stagedBy.get(file)
+    if (other) problems.push(`${file} is downloaded by both ${other} and ${source}`)
+    else stagedBy.set(file, source)
+  }
+
+  for (const { file: dirCandidate, source: dirSource } of staged) {
+    for (const { file: nested, source: nestedSource } of staged) {
+      if (dirSource === nestedSource) continue
+      if (nested.startsWith(`${dirCandidate}/`)) {
+        problems.push(
+          `${dirCandidate}, staged as a file by ${dirSource}, clashes with ${nested}, staged by ${nestedSource} inside a directory of that name`,
+        )
+      }
     }
   }
+
   if (problems.length > 0) throw new UserError(`Refusing to install:\n${problems.join('\n')}`)
 }
 

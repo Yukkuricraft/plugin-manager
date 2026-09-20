@@ -180,7 +180,6 @@ export const output = {
     if (data.substitutes) {
       console.log(`   ${this.label('Substitutes')} ${chalk.cyanBright(data.substitutes)}`)
     }
-    // Shown only when the plugin installs into a subdirectory of the plugins folder
     if (data.installPath) {
       console.log(`   ${this.label('Path')} ${chalk.yellowBright(data.installPath)}`)
     }

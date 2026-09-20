@@ -128,6 +128,32 @@ describe('installPlugins', () => {
     )
   })
 
+  it('refuses when a source stages a file another source stages a directory under, file seen first', async () => {
+    staged['./managedPlugins/modrinth'] = ['Essentials.jar']
+    staged['./managedPlugins/url'] = ['Essentials.jar/PlaceholderExpansion.jar']
+
+    const error = await installPlugins('./plugins.json').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(UserError)
+    expect((error as Error).message).toContain('Essentials.jar')
+    expect((error as Error).message).toContain('Essentials.jar/PlaceholderExpansion.jar')
+    expect(rm).not.toHaveBeenCalledWith('./plugins', expect.anything())
+    expect(cp).not.toHaveBeenCalled()
+  })
+
+  it('refuses when a source stages a file another source stages a directory under, directory seen first', async () => {
+    staged['./managedPlugins/modrinth'] = ['Essentials.jar/PlaceholderExpansion.jar']
+    staged['./managedPlugins/url'] = ['Essentials.jar']
+
+    const error = await installPlugins('./plugins.json').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(UserError)
+    expect((error as Error).message).toContain('Essentials.jar')
+    expect((error as Error).message).toContain('Essentials.jar/PlaceholderExpansion.jar')
+    expect(rm).not.toHaveBeenCalledWith('./plugins', expect.anything())
+    expect(cp).not.toHaveBeenCalled()
+  })
+
   it('leaves the plugins folder alone when a source fails to install', async () => {
     urlInstall.mockRejectedValue(new Error('download failed'))
 

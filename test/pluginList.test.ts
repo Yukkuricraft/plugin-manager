@@ -62,6 +62,7 @@ describe('normalizeInstallPath', () => {
     ['a current segment', 'PlaceholderAPI/./expansions'],
     ['a repeated slash', 'PlaceholderAPI//expansions'],
     ['a backslash', 'PlaceholderAPI\\expansions'],
+    ['a NUL byte', 'PlaceholderAPI/expa\0nsions'],
   ])('rejects %s', (_, raw) => {
     expect(() => normalizeInstallPath(raw)).toThrow(ValidationError)
   })

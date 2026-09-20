@@ -47,7 +47,7 @@ export type PluginOverrides = z.infer<typeof pluginOverrides>
 export function normalizeInstallPath(raw: string): string {
   const trimmed = raw.trim().replace(/\/$/, '')
   const segments = trimmed.split('/')
-  if (trimmed.includes('\\') || segments.some((s) => s === '' || s === '.' || s === '..')) {
+  if (trimmed.includes('\\') || segments.some((s) => s === '' || s === '.' || s === '..' || s.includes('\0'))) {
     throw new ValidationError(
       `Invalid path ${JSON.stringify(raw)}. It must name a directory inside the plugins folder, such as "PlaceholderAPI/expansions"`,
     )

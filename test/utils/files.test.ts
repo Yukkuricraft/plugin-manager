@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -266,6 +266,13 @@ describe('listFiles', () => {
 
     expect(await listFiles(dir)).toEqual([])
   })
+
+  it('reports a symlink, so it is neither ignored nor mistaken for a directory', async () => {
+    await writeFile(path.join(dir, 'Vault.jar'), 'vault')
+    await symlink(path.join(dir, 'Vault.jar'), path.join(dir, 'Link.jar'))
+
+    expect(await listFiles(dir)).toEqual(['Link.jar', 'Vault.jar'])
+  })
 })
 
 describe('pruneEmptyDirs', () => {
@@ -319,5 +326,15 @@ describe('pruneEmptyDirs', () => {
 
     expect(await readdir(dir)).toEqual(['b'])
     expect(await listFiles(dir)).toEqual(['b/file.txt'])
+  })
+
+  it('keeps a directory holding only a symlink', async () => {
+    await mkdir(path.join(dir, 'PlaceholderAPI', 'expansions'), { recursive: true })
+    await writeFile(path.join(dir, 'Vault.jar'), 'vault')
+    await symlink(path.join(dir, 'Vault.jar'), path.join(dir, 'PlaceholderAPI', 'expansions', 'Link.jar'))
+
+    await pruneEmptyDirs(dir)
+
+    expect(await listFiles(dir)).toEqual(['PlaceholderAPI/expansions/Link.jar', 'Vault.jar'])
   })
 })
