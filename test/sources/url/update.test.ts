@@ -63,7 +63,7 @@ describe('url update', () => {
 
     const result = await update(plugins({ grief, vault }), next)
 
-    expect(pinUrl).toHaveBeenCalledWith(next, 'grief', 'https://files.example/grief-3.2.0.jar')
+    expect(pinUrl).toHaveBeenCalledWith(next, 'grief', 'https://files.example/grief-3.2.0.jar', undefined)
     expect(next.all.url.grief).toEqual({
       source: 'url',
       url: 'https://files.example/grief-3.2.0.jar',
@@ -99,5 +99,54 @@ describe('url update', () => {
     expect(validate(grief.url)).not.toBe(true)
     expect(validate('ftp://files.example/grief.jar')).not.toBe(true)
     expect(validate('https://files.example/grief-3.2.0.jar')).toBe(true)
+  })
+
+  it('keeps the path override when a plugin is re-pinned', async () => {
+    const essentials = urlEntry({
+      url: 'https://files.example/Essentials-1.0.0.jar',
+      version: '1.0.0',
+      filename: 'Essentials.jar',
+      overrides: { path: 'PlaceholderAPI/expansions' },
+    })
+    checkbox.mockResolvedValue(['essentials'])
+    input.mockResolvedValueOnce('https://files.example/Essentials-1.1.0.jar').mockResolvedValueOnce('1.1.0')
+    pinUrl.mockResolvedValue({ filename: 'Essentials.jar', sha512: 'sha512-new', size: 20 })
+    const next = plugins()
+
+    await update(plugins({ essentials }), next)
+
+    expect(next.all.url.essentials.overrides).toEqual({ path: 'PlaceholderAPI/expansions' })
+  })
+
+  it('checks the new file against the directory it lands in', async () => {
+    const essentials = urlEntry({
+      url: 'https://files.example/Essentials-1.0.0.jar',
+      version: '1.0.0',
+      filename: 'Essentials.jar',
+      overrides: { path: 'PlaceholderAPI/expansions' },
+    })
+    checkbox.mockResolvedValue(['essentials'])
+    input.mockResolvedValueOnce('https://files.example/Essentials-1.1.0.jar').mockResolvedValueOnce('1.1.0')
+    pinUrl.mockResolvedValue({ filename: 'Essentials.jar', sha512: 'sha512-new', size: 20 })
+
+    await update(plugins({ essentials }), plugins())
+
+    expect(pinUrl).toHaveBeenCalledWith(
+      expect.anything(),
+      'essentials',
+      'https://files.example/Essentials-1.1.0.jar',
+      'PlaceholderAPI/expansions',
+    )
+  })
+
+  it('leaves an entry without an override without one', async () => {
+    checkbox.mockResolvedValue(['vault'])
+    input.mockResolvedValueOnce('https://files.example/Vault-1.7.4.jar').mockResolvedValueOnce('1.7.4')
+    pinUrl.mockResolvedValue({ filename: 'Vault.jar', sha512: 'sha512-new', size: 20 })
+    const next = plugins()
+
+    await update(plugins({ vault }), next)
+
+    expect(next.all.url.vault.overrides).toBeUndefined()
   })
 })
