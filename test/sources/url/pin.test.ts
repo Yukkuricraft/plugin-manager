@@ -4,7 +4,7 @@ import { UserError, ValidationError } from '../../../src/errors.js'
 import { type Plugins } from '../../../src/pluginList.js'
 import { modrinthEntry, urlEntry } from '../../testFixtures.js'
 import { hostHeaders } from '../../../src/sources/url/hostHeaders.js'
-import { parseUrlQuery, pinUrl } from '../../../src/sources/url/pin.js'
+import { installedPath, parseUrlQuery, pinUrl } from '../../../src/sources/url/pin.js'
 
 const { inspectDownload } = vi.hoisted(() => ({ inspectDownload: vi.fn() }))
 vi.mock('../../../src/utils/files.js', async (importOriginal) => ({
@@ -85,5 +85,50 @@ describe('pinUrl', () => {
     const locked = plugins({ url: { vault: urlEntry({ filename: 'Vault.jar' }) } })
 
     await expect(pinUrl(locked, 'vault', 'https://files.example/Vault-new.jar')).resolves.toEqual(pin)
+  })
+
+  it('allows a filename another plugin uses, when the two land in different directories', async () => {
+    inspectDownload.mockResolvedValue(pin)
+    const locked = plugins({ modrinth: { abc: modrinthEntry({ slug: 'vaultunlocked', filename: 'Vault.jar' }) } })
+
+    await expect(
+      pinUrl(locked, 'vault', 'https://files.example/Vault.jar', 'PlaceholderAPI/expansions'),
+    ).resolves.toEqual(pin)
+  })
+
+  it('refuses a filename another url plugin uses in the same directory', async () => {
+    inspectDownload.mockResolvedValue(pin)
+    const locked = plugins({
+      url: {
+        other: urlEntry({ filename: 'Vault.jar', overrides: { path: 'PlaceholderAPI/expansions' } }),
+      },
+    })
+
+    await expect(
+      pinUrl(locked, 'vault', 'https://files.example/Vault.jar', 'PlaceholderAPI/expansions'),
+    ).rejects.toThrow('url:other')
+  })
+
+  it('names the path, not just the filename, when the clash is in a subdirectory', async () => {
+    inspectDownload.mockResolvedValue(pin)
+    const locked = plugins({
+      url: { other: urlEntry({ filename: 'Vault.jar', overrides: { path: 'expansions' } }) },
+    })
+
+    await expect(pinUrl(locked, 'vault', 'https://files.example/Vault.jar', 'expansions')).rejects.toThrow(
+      'expansions/Vault.jar',
+    )
+  })
+})
+
+describe('installedPath', () => {
+  it('is the filename alone when there is no override', () => {
+    expect(installedPath('Vault.jar')).toBe('Vault.jar')
+  })
+
+  it('joins the override onto the filename with a forward slash', () => {
+    expect(installedPath('Essentials.jar', 'PlaceholderAPI/expansions')).toBe(
+      'PlaceholderAPI/expansions/Essentials.jar',
+    )
   })
 })
