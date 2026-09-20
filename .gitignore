@@ -1,8 +1,10 @@
 node_modules
 plugins.json
+environments.json
 plugins
 managedPlugins
 unmanagedPlugins
 .idea
 .yarn
+.env.yarn
 changelog.md

@@ -1,4 +1,5 @@
 import fs from 'fs/promises'
+import path from 'node:path'
 
 import type { components } from './modrinth.js'
 
@@ -8,7 +9,7 @@ import client from './client.js'
 import { downloadFile, fileHash } from '../../utils/files.js'
 import { MissingDataError, RequestError, ValidationError } from '../../errors.js'
 
-export default async function install(plugins: AllPlugins): Promise<void> {
+export default async function install(plugins: AllPlugins, dir: string): Promise<void> {
   const versionsRes = await client.GET('/versions', {
     params: {
       query: {
@@ -34,7 +35,9 @@ export default async function install(plugins: AllPlugins): Promise<void> {
     const versionFile = version.files.find((f) => f.primary) ?? version.files[0]
 
     if (versionFile.hashes.sha512 !== plugin.sha512 && versionFile.hashes.sha1 !== plugin.sha1) {
-      throw new ValidationError(`Plugin ${plugin.slug}@${plugin.version} has different hashes. Run update and try again`)
+      throw new ValidationError(
+        `Plugin ${plugin.slug}@${plugin.version} has different hashes. Run update and try again`,
+      )
     }
 
     primaryFile[id] = versionFile
@@ -43,17 +46,17 @@ export default async function install(plugins: AllPlugins): Promise<void> {
     if (versionFile.hashes.sha1) projectIdByHash[versionFile.hashes.sha1] = version.project_id
   }
 
-  const existingFiles = await fs.readdir('./managedPlugins')
+  const existingFiles = await fs.readdir(dir)
 
   const projectsToSkip: string[] = []
 
   const existingFileHashes = await Promise.all(
-    existingFiles.map((f) => fileHash(`./managedPlugins/${f}`).then((h) => [f, h] as const)),
+    existingFiles.map((f) => fileHash(path.join(dir, f)).then((h) => [f, h] as const)),
   )
   for (const [file, hashes] of existingFileHashes) {
     const projectId = projectIdByHash[hashes.sha512 ?? hashes.sha1]
     if (!projectId) {
-      await fs.rm(`./managedPlugins/${file}`)
+      await fs.rm(path.join(dir, file))
     } else {
       output.file(file, 'skipped')
       projectsToSkip.push(projectId)
@@ -65,7 +68,7 @@ export default async function install(plugins: AllPlugins): Promise<void> {
       .filter((id) => !projectsToSkip.includes(id))
       .map(async (id) => {
         const file = primaryFile[id]
-        await downloadFile(file.url, {
+        await downloadFile(file.url, dir, {
           id,
           filename: file.filename,
           sha512: file.hashes.sha512,

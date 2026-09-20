@@ -1,17 +1,12 @@
-import semver from 'semver'
-
-import { Plugins } from '../../pluginList.js'
+import { type Plugins } from '../../pluginList.js'
+import { overridesFor, resolveTarget, sameOverrides } from '../../resolution.js'
 import { output } from '../../utils/output.js'
+import type { AddFlags } from '../pluginSource.js'
 import client from './client.js'
-import { formatDependencyInfo, getPluginVersion } from './utils.js'
-import { MissingDataError, RequestError } from '../../errors.js'
+import { addRequiredDependencies, formatDependencyInfo, getPluginVersion } from './utils.js'
+import { MissingDataError, RequestError, UserError } from '../../errors.js'
 
-export default async function addPlugin(
-  plugins: Plugins,
-  pluginIndicator: string,
-  gameVersion?: string,
-  featured?: boolean,
-) {
+export default async function addPlugin(plugins: Plugins, pluginIndicator: string, flags: AddFlags) {
   let plugin
   let version = null
   if (pluginIndicator.includes('@')) {
@@ -21,17 +16,25 @@ export default async function addPlugin(
   }
 
   if (plugins.added[`modrinth:${plugin}`]) {
-    if (version) {
-      if (version !== plugins.added[`modrinth:${plugin}`]) {
-        output.info(
-          `Plugin ${output.pluginName(plugin)} already in added list. Updating it to the desired version instead`,
-        )
-      } else {
+    if (version && version === plugins.added[`modrinth:${plugin}`]) {
+      // The requested version already matches what's added, but the loader or Minecraft version it resolves
+      // against this run might not match what's recorded, e.g. a new --loader flag. Only skip the update
+      // when the resolved overrides are still the same as before.
+      const recorded = Object.values(plugins.all.modrinth).find((p) => p.slug === plugin)
+      const resolved = resolveTarget(plugins.config, recorded?.overrides, flags)
+      if (sameOverrides(recorded?.overrides, overridesFor(resolved))) {
         output.info(
           `Plugin ${output.pluginName(plugin)} already in added list with the specified version. Exiting early`,
         )
-        return
+        return false
       }
+      output.info(
+        `Plugin ${output.pluginName(plugin)} already in added list with the specified version, but a different loader or Minecraft version. Updating`,
+      )
+    } else if (version) {
+      output.info(
+        `Plugin ${output.pluginName(plugin)} already in added list. Updating it to the desired version instead`,
+      )
     } else {
       output.info(
         `Plugin ${output.pluginName(plugin)} already in added list, but no version specified in command. Updating`,
@@ -51,19 +54,38 @@ export default async function addPlugin(
   }
   const project = projectRes.data
 
-  const { projectVersion, dependencies: depInfos } = await getPluginVersion(project.id, {
+  const rule = plugins.config.substitutes?.[project.id]
+  if (rule) {
+    throw new UserError(
+      `${rule.slug} is substituted by ${rule.substituteSlug} in plugins.json, so it can't be added. Run \`yarn run-cli substitute --remove ${rule.slug}\` first to add it`,
+    )
+  }
+
+  // Resolved per plugin, since a loader override recorded on an existing entry only applies to that plugin
+  const existing = plugins.all.modrinth[project.id]
+  const resolved = resolveTarget(plugins.config, existing?.overrides, flags)
+  for (const deviation of resolved.deviations) {
+    const setting = deviation.field === 'loader' ? 'loader' : 'Minecraft version'
+    output.warning(
+      `${project.slug ?? plugin} resolves against ${setting} ${deviation.usedValue} instead of ${deviation.configValue} from plugins.json, so it will be recorded as an override`,
+    )
+  }
+
+  const { projectVersion, dependencies: depInfos } = await getPluginVersion(project.id, resolved.loader, {
     targetVersion: version ?? undefined,
     displayFor: plugin,
-    gameVersion,
-    featured,
+    gameVersion: resolved.gameVersion,
+    featured: flags.featured,
+    // Dependencies already in the lockfile are reused as they are. Moving them to newer builds is update's job
+    dependencyContext: { substitutes: plugins.config.substitutes, locked: plugins.all.modrinth },
   })
 
   if (!project.slug || !projectVersion.version_number) {
     throw new MissingDataError('Project slug or version number not found')
   }
 
-  const existing = plugins.all.modrinth[project.id]
   const existingDependedOnBy = existing ? existing.dependedOnBy : new Set<string>()
+  const overrides = overridesFor(resolved)
 
   if (existing) delete plugins.all.modrinth[project.id]
 
@@ -81,50 +103,14 @@ export default async function addPlugin(
     filename: versionFile.filename,
     publishedAt: projectVersion.date_published,
     dependedOnBy: existingDependedOnBy,
+    overrides,
   }
 
   // Update the plugins ahead of formatting dependency info, so we can show conflicts on newly added plugins
-  const depsToProcess = []
-  depsToProcess.push(...depInfos.map((d) => ({ dep: d, dependant: project.id })))
-  for (const { dep, dependant } of depsToProcess) {
-    if (dep.type !== 'required') continue
-
-    const existing = plugins.all.modrinth[dep.projectId]
-    const existingSemver = semver.coerce(existing?.version, {
-      includePrerelease: true,
-      rtl: true,
-    })
-    const newSemver = semver.coerce(dep.version, {
-      includePrerelease: true,
-      rtl: true,
-    })
-    if (existingSemver && newSemver && semver.compare(existingSemver, newSemver) >= 0) {
-      existing.dependedOnBy.add(dependant)
-      continue
-    } else if (existing) {
-      delete plugins.all.modrinth[dep.projectId]
-    }
-
-    const dependedOnBy = existing?.dependedOnBy ?? new Set<string>()
-    dependedOnBy.add(dependant)
-
-    plugins.all.modrinth[dep.projectId] = {
-      source: 'modrinth',
-      slug: dep.projectSlug ?? null,
-      version: dep.version ?? null,
-      versionId: dep.versionId,
-      sha512: dep.sha512,
-      sha1: dep.sha1,
-      size: dep.size,
-      filename: dep.filename,
-      publishedAt: dep.publishedAt,
-      dependedOnBy,
-    }
-
-    for (const depDep of dep.dependencies) {
-      depsToProcess.push({ dep: depDep, dependant: dep.projectId })
-    }
-  }
+  addRequiredDependencies(
+    plugins.all.modrinth,
+    depInfos.map((dep) => ({ dep, dependant: project.id })),
+  )
 
   if (depInfos.length > 0) {
     output.dependency(`${output.pluginName(project.slug)} has dependencies:`)
@@ -134,4 +120,20 @@ export default async function addPlugin(
   }
 
   output.success(`Adding ${output.pluginName(project.title ?? plugin)}`)
+  output.pluginCard({
+    title: project.title,
+    slug: project.slug,
+    version: projectVersion.version_number,
+    versionType: projectVersion.version_type,
+    loaders: projectVersion.loaders ?? undefined,
+    mcVersions: projectVersion.game_versions ?? undefined,
+    overrides,
+    filename: versionFile.filename,
+    size: versionFile.size,
+    publishedAt: projectVersion.date_published,
+    // The version page rather than the project page, so the exact build being downloaded is what
+    // gets confirmed
+    url: `https://modrinth.com/plugin/${project.slug}/version/${projectVersion.id}`,
+  })
+  return true
 }
