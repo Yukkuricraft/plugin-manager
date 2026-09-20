@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { UserError } from '../src/errors.js'
 import { type Plugins, type SubstituteRule } from '../src/pluginList.js'
 import { modrinthEntry, substituteRule, urlEntry } from './testFixtures.js'
-import { assertNoSubstitutedPluginsLocked, declareSubstitute, removeSubstitute } from '../src/substitute.js'
+import {
+  assertNoSubstitutedPluginsLocked,
+  assertNotSubstituting,
+  declareSubstitute,
+  removeSubstitute,
+} from '../src/substitute.js'
 
 const { get } = vi.hoisted(() => ({ get: vi.fn() }))
 vi.mock('../src/sources/modrinth/client.js', () => ({ default: { GET: get } }))
@@ -260,5 +265,42 @@ describe('assertNoSubstitutedPluginsLocked', () => {
       fawe: substituteRule({ slug: 'fastasyncworldedit', substitute: 'other', substituteSlug: 'other' }),
     }
     expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('fastasyncworldedit')
+  })
+})
+
+describe('assertNotSubstituting', () => {
+  it('refuses to remove a url plugin a rule points at', () => {
+    const p = withRules({
+      we: substituteRule({
+        substitute: 'FastAsyncWorldEdit',
+        substituteSlug: 'FastAsyncWorldEdit',
+        substituteSource: 'url',
+      }),
+    })
+    const toRemove = [{ plugin: urlEntry(), id: 'FastAsyncWorldEdit' }]
+
+    expect(() => assertNotSubstituting(p, toRemove)).toThrow(UserError)
+    expect(() => assertNotSubstituting(p, toRemove)).toThrow('`yarn run-cli substitute --remove worldedit`')
+  })
+
+  it('refuses to remove a modrinth plugin a rule points at', () => {
+    const p = withRules({ we: substituteRule() })
+    const toRemove = [{ plugin: modrinthEntry({ slug: 'fastasyncworldedit' }), id: 'fawe' }]
+
+    expect(() => assertNotSubstituting(p, toRemove)).toThrow('`yarn run-cli substitute --remove worldedit`')
+  })
+
+  it('allows removing a plugin no rule points at', () => {
+    const p = withRules({ we: substituteRule() })
+    const toRemove = [{ plugin: modrinthEntry({ slug: 'other' }), id: 'other' }]
+
+    expect(() => assertNotSubstituting(p, toRemove)).not.toThrow()
+  })
+
+  it('does not confuse a url plugin with a modrinth substitute of the same id', () => {
+    const p = withRules({ we: substituteRule() })
+    const toRemove = [{ plugin: urlEntry(), id: 'fawe' }]
+
+    expect(() => assertNotSubstituting(p, toRemove)).not.toThrow()
   })
 })

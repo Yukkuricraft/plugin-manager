@@ -1,4 +1,4 @@
-import { dependantNames, isAddedModrinthPlugin, type Plugins, type SubstituteRule } from './pluginList.js'
+import { dependantNames, isAddedModrinthPlugin, type Plugin, type Plugins, type SubstituteRule } from './pluginList.js'
 import { getPluginSource } from './sources/pluginSource.js'
 import { findProject } from './sources/modrinth/utils.js'
 import { UserError } from './errors.js'
@@ -124,4 +124,20 @@ export function assertNoSubstitutedPluginsLocked(plugins: Plugins) {
     ]
   })
   if (problems.length > 0) throw new UserError(`Refusing to install:\n${problems.join('\n')}`)
+}
+
+/**
+ * Throws if any plugin in `toRemove` is the substitute in a rule, which would leave the rule pointing at a plugin
+ * that is gone. remove runs it before deleting anything.
+ */
+export function assertNotSubstituting(plugins: Plugins, toRemove: { plugin: Plugin; id: string }[]) {
+  const rules = Object.values(plugins.config.substitutes ?? {})
+  const problems = toRemove.flatMap(({ plugin, id }) => {
+    const rule = rules.find((r) => r.substituteSource === plugin.source && r.substitute === id)
+    if (!rule) return []
+    return [
+      `${rule.substituteSlug} substitutes for ${rule.slug}. Run \`yarn run-cli substitute --remove ${rule.slug}\` first`,
+    ]
+  })
+  if (problems.length > 0) throw new UserError(`Refusing to remove:\n${problems.join('\n')}`)
 }
