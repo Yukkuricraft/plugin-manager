@@ -3,6 +3,7 @@ import fs from 'fs/promises'
 import { UserError } from '../errors.js'
 import { assertNoSubstitutedPluginsLocked, loadPlugins } from '../pluginList.js'
 import { allPluginSources, type PluginSource } from '../sources/pluginSource.js'
+import { listFiles } from '../utils/files.js'
 import { output } from '../utils/output.js'
 
 const managedDir = './managedPlugins'
@@ -14,14 +15,14 @@ function stagingDir(source: PluginSource) {
 }
 
 /**
- * Throws if two sources staged a file with the same name, since one would overwrite the other in the plugins folder.
- * add refuses a filename another plugin already uses, so this catches a plugins.json edited by hand.
+ * Throws if two sources staged a file at the same path, since one would overwrite the other in the plugins folder.
+ * add refuses a path another plugin already uses, so this catches a plugins.json edited by hand.
  */
-async function assertNoSharedFilenames() {
+async function assertNoSharedPaths() {
   const stagedBy = new Map<string, string>()
   const problems: string[] = []
   for (const source of allPluginSources) {
-    for (const file of await fs.readdir(stagingDir(source))) {
+    for (const file of await listFiles(stagingDir(source))) {
       const other = stagedBy.get(file)
       if (other) problems.push(`${file} is downloaded by both ${other} and ${source.prefix}`)
       else stagedBy.set(file, source.prefix)
@@ -49,7 +50,7 @@ export default async function installPlugins(pluginsPath: string) {
     await fs.mkdir(stagingDir(source), { recursive: true })
     await source.install(plugins.all, stagingDir(source))
   }
-  await assertNoSharedFilenames()
+  await assertNoSharedPaths()
 
   output.blank()
   output.info('Reconstructing plugins folder')

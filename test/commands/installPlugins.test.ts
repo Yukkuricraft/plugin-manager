@@ -5,12 +5,13 @@ import { type Plugins } from '../../src/pluginList.js'
 import { modrinthEntry } from '../testFixtures.js'
 import installPlugins from '../../src/commands/installPlugins.js'
 
-const { loadPlugins, rm, mkdir, cp, readdir, modrinthInstall, urlInstall } = vi.hoisted(() => ({
+const { loadPlugins, rm, mkdir, cp, readdir, listFiles, modrinthInstall, urlInstall } = vi.hoisted(() => ({
   loadPlugins: vi.fn(),
   rm: vi.fn(),
   mkdir: vi.fn(),
   cp: vi.fn(),
   readdir: vi.fn(),
+  listFiles: vi.fn(),
   modrinthInstall: vi.fn(),
   urlInstall: vi.fn(),
 }))
@@ -21,6 +22,10 @@ vi.mock('../../src/pluginList.js', async (importOriginal) => ({
   loadPlugins,
 }))
 vi.mock('fs/promises', () => ({ default: { rm, mkdir, cp, readdir } }))
+vi.mock('../../src/utils/files.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  listFiles,
+}))
 vi.mock('../../src/sources/pluginSource.js', () => ({
   allPluginSources: [
     { prefix: 'modrinth', install: modrinthInstall },
@@ -44,10 +49,15 @@ function plugins(modrinth: Plugins['all']['modrinth'] = {}): Plugins {
 /** What readdir returns for each directory. A directory not listed here is empty */
 let listings: Record<string, string[]>
 
+/** What listFiles returns for each staging directory. A directory not listed here is empty */
+let staged: Record<string, string[]>
+
 beforeEach(() => {
-  for (const fn of [loadPlugins, rm, mkdir, cp, readdir, modrinthInstall, urlInstall]) fn.mockReset()
+  for (const fn of [loadPlugins, rm, mkdir, cp, readdir, listFiles, modrinthInstall, urlInstall]) fn.mockReset()
   listings = {}
   readdir.mockImplementation((dir: string) => Promise.resolve(listings[dir] ?? []))
+  staged = {}
+  listFiles.mockImplementation((dir: string) => Promise.resolve(staged[dir] ?? []))
   loadPlugins.mockResolvedValue(plugins())
   vi.spyOn(console, 'log').mockImplementation(() => undefined)
 })
@@ -90,14 +100,32 @@ describe('installPlugins', () => {
     expect(rm).not.toHaveBeenCalledWith('./managedPlugins/url', expect.anything())
   })
 
-  it('refuses a filename two sources both downloaded, before deleting the plugins folder', async () => {
-    listings['./managedPlugins/modrinth'] = ['Vault.jar']
-    listings['./managedPlugins/url'] = ['Vault.jar']
+  it('refuses a file two sources both staged at the same path, before deleting the plugins folder', async () => {
+    staged['./managedPlugins/modrinth'] = ['Vault.jar']
+    staged['./managedPlugins/url'] = ['Vault.jar']
 
     await expect(installPlugins('./plugins.json')).rejects.toThrow('Vault.jar is downloaded by both modrinth and url')
 
     expect(rm).not.toHaveBeenCalledWith('./plugins', expect.anything())
     expect(cp).not.toHaveBeenCalled()
+  })
+
+  it('allows the same filename in two different directories', async () => {
+    staged['./managedPlugins/modrinth'] = ['Essentials.jar']
+    staged['./managedPlugins/url'] = ['PlaceholderAPI/expansions/Essentials.jar']
+
+    await installPlugins('./plugins.json')
+
+    expect(cp).toHaveBeenCalled()
+  })
+
+  it('names the full path when two sources stage the same one', async () => {
+    staged['./managedPlugins/modrinth'] = ['PlaceholderAPI/expansions/Essentials.jar']
+    staged['./managedPlugins/url'] = ['PlaceholderAPI/expansions/Essentials.jar']
+
+    await expect(installPlugins('./plugins.json')).rejects.toThrow(
+      'PlaceholderAPI/expansions/Essentials.jar is downloaded by both modrinth and url',
+    )
   })
 
   it('leaves the plugins folder alone when a source fails to install', async () => {
