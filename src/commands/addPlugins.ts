@@ -5,8 +5,8 @@ import { type AddFlags, getPluginSource } from '../sources/pluginSource.js'
 import installPlugins from './installPlugins.js'
 import { output } from '../utils/output.js'
 
-export default async function addPlugins(pluginIndicators: string[], flags: AddFlags) {
-  const plugins = await loadPlugins()
+export default async function addPlugins(pluginsPath: string, pluginIndicators: string[], flags: AddFlags) {
+  const plugins = await loadPlugins(pluginsPath)
 
   let changed = false
   for (const pluginIndicator of pluginIndicators) {
@@ -24,7 +24,7 @@ export default async function addPlugins(pluginIndicators: string[], flags: AddF
   })
   if (!accept) return
 
-  await writePlugins(plugins)
+  await writePlugins(plugins, pluginsPath)
   output.blank()
-  await installPlugins()
+  await installPlugins(pluginsPath)
 }

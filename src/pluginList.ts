@@ -149,7 +149,7 @@ function sortObj<A extends object>(obj: A): A {
   return res
 }
 
-export async function pluginsExist(path = defaultPluginsPath): Promise<boolean> {
+export async function pluginsExist(path: string): Promise<boolean> {
   try {
     await fs.access(path)
     return true
@@ -158,7 +158,7 @@ export async function pluginsExist(path = defaultPluginsPath): Promise<boolean> 
   }
 }
 
-export async function loadPlugins(path = defaultPluginsPath): Promise<Plugins> {
+export async function loadPlugins(path: string): Promise<Plugins> {
   let str: string
   try {
     str = await fs.readFile(path, 'utf-8')
@@ -196,7 +196,7 @@ export async function loadPlugins(path = defaultPluginsPath): Promise<Plugins> {
   }
 }
 
-export async function writePlugins(pluginsObj: Plugins, path = defaultPluginsPath) {
+export async function writePlugins(pluginsObj: Plugins, path: string) {
   pluginsObj = sortObj(pluginsObj)
   await fs.writeFile(path, JSON.stringify(plugins.encode(pluginsObj), null, 2))
 }

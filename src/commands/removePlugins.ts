@@ -3,8 +3,8 @@ import { getPluginSource, PluginSource } from '../sources/pluginSource.js'
 import installPlugins from './installPlugins.js'
 import { SanityCheckError, UserError } from '../errors.js'
 
-export default async function removePlugins(pluginsToRemove: string[]) {
-  const plugins = await loadPlugins()
+export default async function removePlugins(pluginsPath: string, pluginsToRemove: string[]) {
+  const plugins = await loadPlugins(pluginsPath)
 
   // One at a time, since an ambiguous name prompts the user
   const toRemove = []
@@ -34,6 +34,6 @@ export default async function removePlugins(pluginsToRemove: string[]) {
 
   sources.forEach((toRemoveFromSource, source) => source.removePlugin(plugins, toRemoveFromSource))
 
-  await writePlugins(plugins)
-  await installPlugins()
+  await writePlugins(plugins, pluginsPath)
+  await installPlugins(pluginsPath)
 }

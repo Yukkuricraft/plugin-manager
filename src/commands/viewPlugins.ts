@@ -2,8 +2,8 @@ import { loadPlugins, type Plugin } from '../pluginList.js'
 import { getPluginSource, PluginSource } from '../sources/pluginSource.js'
 import { SanityCheckError, UserError } from '../errors.js'
 
-export default async function viewPlugins(plugins: string[]) {
-  const pluginsMap = await loadPlugins()
+export default async function viewPlugins(pluginsPath: string, plugins: string[]) {
+  const pluginsMap = await loadPlugins(pluginsPath)
 
   // One at a time, since an ambiguous name prompts the user
   const resolvedPlugins = []

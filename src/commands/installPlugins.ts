@@ -31,8 +31,8 @@ async function assertNoSharedFilenames() {
   if (problems.length > 0) throw new UserError(`Refusing to install:\n${problems.join('\n')}`)
 }
 
-export default async function installPlugins() {
-  const plugins = await loadPlugins()
+export default async function installPlugins(pluginsPath: string) {
+  const plugins = await loadPlugins(pluginsPath)
   // Before any folder is touched, so a refused install leaves the server's current plugins in place
   assertNoSubstitutedPluginsLocked(plugins)
   output.download('Downloading plugins...')

@@ -7,8 +7,8 @@ import { allPluginSources, type OverrideChange } from '../sources/pluginSource.j
 import { output } from '../utils/output.js'
 import installPlugins from './installPlugins.js'
 
-export default async function updatePlugins(flags: { gameVersion?: string; featured?: boolean }) {
-  const existingPlugins = await loadPlugins()
+export default async function updatePlugins(pluginsPath: string, flags: { gameVersion?: string; featured?: boolean }) {
+  const existingPlugins = await loadPlugins(pluginsPath)
   const currentGameVersion = existingPlugins.config.gameVersion
   const gameVersion = await chooseGameVersion(
     flags.gameVersion,
@@ -110,8 +110,8 @@ export default async function updatePlugins(flags: { gameVersion?: string; featu
     message: 'Continue?',
   })
   if (!accept) return
-  await writePlugins(newPlugins)
+  await writePlugins(newPlugins, pluginsPath)
   await fs.writeFile('changelog.md', changelogs.join('\n\n'), 'utf-8')
 
-  await installPlugins()
+  await installPlugins(pluginsPath)
 }

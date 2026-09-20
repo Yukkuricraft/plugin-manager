@@ -56,7 +56,7 @@ describe('installPlugins', () => {
   it('refuses before touching any folder when a replaced project is locked', async () => {
     loadPlugins.mockResolvedValue(plugins({ we: modrinthEntry({ slug: 'worldedit' }) }))
 
-    await expect(installPlugins()).rejects.toThrow(UserError)
+    await expect(installPlugins('./plugins.json')).rejects.toThrow(UserError)
 
     expect(rm).not.toHaveBeenCalled()
     expect(modrinthInstall).not.toHaveBeenCalled()
@@ -65,14 +65,14 @@ describe('installPlugins', () => {
   it('installs when no replaced project is locked', async () => {
     loadPlugins.mockResolvedValue(plugins({ fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) }))
 
-    await installPlugins()
+    await installPlugins('./plugins.json')
 
     expect(rm).toHaveBeenCalledWith('./plugins', { recursive: true, force: true })
     expect(modrinthInstall).toHaveBeenCalledOnce()
   })
 
   it('gives each source its own directory under managedPlugins', async () => {
-    await installPlugins()
+    await installPlugins('./plugins.json')
 
     expect(mkdir).toHaveBeenCalledWith('./managedPlugins/modrinth', { recursive: true })
     expect(mkdir).toHaveBeenCalledWith('./managedPlugins/url', { recursive: true })
@@ -83,7 +83,7 @@ describe('installPlugins', () => {
   it('deletes anything in managedPlugins that is not a source directory', async () => {
     listings['./managedPlugins'] = ['modrinth', 'url', 'LuckPerms-Bukkit-5.4.145.jar']
 
-    await installPlugins()
+    await installPlugins('./plugins.json')
 
     expect(rm).toHaveBeenCalledWith('./managedPlugins/LuckPerms-Bukkit-5.4.145.jar', { recursive: true, force: true })
     expect(rm).not.toHaveBeenCalledWith('./managedPlugins/modrinth', expect.anything())
@@ -94,7 +94,7 @@ describe('installPlugins', () => {
     listings['./managedPlugins/modrinth'] = ['Vault.jar']
     listings['./managedPlugins/url'] = ['Vault.jar']
 
-    await expect(installPlugins()).rejects.toThrow('Vault.jar is downloaded by both modrinth and url')
+    await expect(installPlugins('./plugins.json')).rejects.toThrow('Vault.jar is downloaded by both modrinth and url')
 
     expect(rm).not.toHaveBeenCalledWith('./plugins', expect.anything())
     expect(cp).not.toHaveBeenCalled()
@@ -103,18 +103,24 @@ describe('installPlugins', () => {
   it('leaves the plugins folder alone when a source fails to install', async () => {
     urlInstall.mockRejectedValue(new Error('download failed'))
 
-    await expect(installPlugins()).rejects.toThrow('download failed')
+    await expect(installPlugins('./plugins.json')).rejects.toThrow('download failed')
 
     expect(rm).not.toHaveBeenCalledWith('./plugins', expect.anything())
   })
 
   it('copies each source directory into the plugins folder, then unmanagedPlugins last', async () => {
-    await installPlugins()
+    await installPlugins('./plugins.json')
 
     expect(cp.mock.calls.map(([from, to]: string[]) => [from, to])).toEqual([
       ['./managedPlugins/modrinth', './plugins'],
       ['./managedPlugins/url', './plugins'],
       ['./unmanagedPlugins', './plugins'],
     ])
+  })
+
+  it('reads the lockfile it was given', async () => {
+    await installPlugins('/srv/env7/plugins.json')
+
+    expect(loadPlugins).toHaveBeenCalledWith('/srv/env7/plugins.json')
   })
 })

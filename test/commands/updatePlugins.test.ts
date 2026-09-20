@@ -50,10 +50,10 @@ describe('updatePlugins', () => {
     chooseGameVersion.mockResolvedValue('1.21.4')
     confirm.mockResolvedValue(true)
 
-    await updatePlugins({})
+    await updatePlugins('./plugins.json', {})
 
     expect(writePlugins).toHaveBeenCalledOnce()
-    const [written] = writePlugins.mock.calls[0] as [Plugins]
+    const [written] = writePlugins.mock.calls[0] as [Plugins, string]
     expect(written.config.gameVersion).toBe('1.21.4')
     expect(written.config.loader).toBe('paper')
     expect(installPlugins).toHaveBeenCalledOnce()
@@ -62,7 +62,7 @@ describe('updatePlugins', () => {
   it('reports no updates available and writes nothing when the target is unchanged and nothing changed', async () => {
     chooseGameVersion.mockResolvedValue('1.21.1')
 
-    await updatePlugins({})
+    await updatePlugins('./plugins.json', {})
 
     const printed = vi.mocked(console.log).mock.calls.flat().join('\n')
     expect(printed).toContain('No updates available')
@@ -76,7 +76,7 @@ describe('updatePlugins', () => {
     const error = new UserError('Update aborted, nothing was written. some reason')
     sourceUpdate.mockRejectedValue(error)
 
-    await expect(updatePlugins({})).rejects.toBe(error)
+    await expect(updatePlugins('./plugins.json', {})).rejects.toBe(error)
 
     expect(writePlugins).not.toHaveBeenCalled()
     expect(writeFile).not.toHaveBeenCalled()
@@ -87,7 +87,7 @@ describe('updatePlugins', () => {
     chooseGameVersion.mockResolvedValue('1.21.4')
     confirm.mockResolvedValue(false)
 
-    await updatePlugins({})
+    await updatePlugins('./plugins.json', {})
 
     expect(writePlugins).not.toHaveBeenCalled()
     expect(writeFile).not.toHaveBeenCalled()

@@ -29,7 +29,7 @@ describe('showPlugins', () => {
     }
     loadPlugins.mockResolvedValue(plugins)
 
-    await showPlugins(false)
+    await showPlugins('./plugins.json', false)
 
     const printed = vi.mocked(console.log).mock.calls.flat().join('\n')
     expect(printed).toContain('worldedit → fastasyncworldedit')

@@ -11,9 +11,9 @@ import { output } from '../utils/output.js'
  * command line. Refuses to run if plugins.json already exists, since changing the loader afterwards would invalidate
  * every plugin already resolved against it.
  */
-export default async function initPlugins(flags: { loader?: Loader; gameVersion?: string }) {
-  if (await pluginsExist()) {
-    throw new UserError('plugins.json already exists. Delete it first to start over with a different configuration')
+export default async function initPlugins(pluginsPath: string, flags: { loader?: Loader; gameVersion?: string }) {
+  if (await pluginsExist(pluginsPath)) {
+    throw new UserError(`${pluginsPath} already exists. Delete it first to start over with a different configuration`)
   }
 
   const loader =
@@ -31,6 +31,6 @@ export default async function initPlugins(flags: { loader?: Loader; gameVersion?
     added: {},
     all: { modrinth: {}, url: {} },
   }
-  await writePlugins(plugins)
-  output.success(`Created plugins.json for ${loader} ${gameVersion}`)
+  await writePlugins(plugins, pluginsPath)
+  output.success(`Created ${pluginsPath} for ${loader} ${gameVersion}`)
 }

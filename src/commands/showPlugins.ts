@@ -7,8 +7,8 @@ function plural(count: number, word: string) {
   return `${count} ${word}${count === 1 ? '' : 's'}`
 }
 
-export default async function showPlugins(verbose: boolean) {
-  const pluginsObj = await loadPlugins()
+export default async function showPlugins(pluginsPath: string, verbose: boolean) {
+  const pluginsObj = await loadPlugins(pluginsPath)
   const { loader, gameVersion } = pluginsObj.config
   console.log(`${output.label('Server')} ${output.highlight(`${loader} ${gameVersion}`)}`)
   for (const rule of Object.values(pluginsObj.config.substitutes ?? {})) {

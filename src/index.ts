@@ -11,6 +11,7 @@ import substitutePlugins from './commands/substitutePlugins.js'
 import updatePlugins from './commands/updatePlugins.js'
 import viewPlugins from './commands/viewPlugins.js'
 import { MissingDataError, RequestError, UserError, ValidationError } from './errors.js'
+import { defaultPluginsPath } from './pluginList.js'
 import { allLoaders } from './sources/modrinth/loaders.js'
 import { output } from './utils/output.js'
 
@@ -44,7 +45,7 @@ await yargs()
           alias: 'mc-version',
           describe: 'The Minecraft version the server runs, e.g. "1.21.1". Asked for if not given',
         }),
-    (argv) => initPlugins({ loader: argv.loader, gameVersion: argv.gameVersion }),
+    (argv) => initPlugins(defaultPluginsPath, { loader: argv.loader, gameVersion: argv.gameVersion }),
   )
   .command(
     'search <plugin>',
@@ -70,7 +71,7 @@ await yargs()
             'Show plugins whichever Minecraft versions they support, including ones that lag behind plugins.json',
         }),
     (argv) =>
-      searchPlugins(argv.plugin, {
+      searchPlugins(defaultPluginsPath, argv.plugin, {
         loader: argv.loader,
         gameVersion: argv.gameVersion,
         anyGameVersion: argv.anyGameVersion,
@@ -101,7 +102,12 @@ await yargs()
           type: 'boolean',
           describe: featuredDescription,
         }),
-    (argv) => addPlugins(argv.plugin, { loader: argv.loader, gameVersion: argv.gameVersion, featured: argv.featured }),
+    (argv) =>
+      addPlugins(defaultPluginsPath, argv.plugin, {
+        loader: argv.loader,
+        gameVersion: argv.gameVersion,
+        featured: argv.featured,
+      }),
   )
   .command(
     'view <plugin..>',
@@ -113,7 +119,7 @@ await yargs()
         demandOption: true,
         array: true,
       }),
-    (argv) => viewPlugins(argv.plugin),
+    (argv) => viewPlugins(defaultPluginsPath, argv.plugin),
   )
   .command(
     'show',
@@ -125,7 +131,7 @@ await yargs()
         describe: 'Show full details for each plugin',
         default: false,
       }),
-    (argv) => showPlugins(argv.verbose),
+    (argv) => showPlugins(defaultPluginsPath, argv.verbose),
   )
   .command(
     'remove <plugin..>',
@@ -137,7 +143,7 @@ await yargs()
         array: true,
         demandOption: true,
       }),
-    (argv) => removePlugins(argv.plugin),
+    (argv) => removePlugins(defaultPluginsPath, argv.plugin),
   )
   .command(
     'substitute <plugin> [substitute]',
@@ -157,9 +163,9 @@ await yargs()
           type: 'boolean',
           describe: 'Remove the substitution for <plugin> instead',
         }),
-    (argv) => substitutePlugins(argv.plugin, argv.substitute, { remove: argv.remove }),
+    (argv) => substitutePlugins(defaultPluginsPath, argv.plugin, argv.substitute, { remove: argv.remove }),
   )
-  .command('install', 'Install plugins', {}, () => installPlugins())
+  .command('install', 'Install plugins', {}, () => installPlugins(defaultPluginsPath))
   .command(
     'update',
     'Update plugins',
@@ -174,7 +180,7 @@ await yargs()
           type: 'boolean',
           describe: featuredDescription,
         }),
-    (argv) => updatePlugins({ gameVersion: argv.gameVersion, featured: argv.featured }),
+    (argv) => updatePlugins(defaultPluginsPath, { gameVersion: argv.gameVersion, featured: argv.featured }),
   )
   .completion()
   .help()
