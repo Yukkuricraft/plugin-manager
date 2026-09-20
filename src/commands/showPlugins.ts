@@ -10,6 +10,7 @@ function plural(count: number, word: string) {
 export default async function showPlugins(pluginsPath: string, verbose: boolean) {
   const pluginsObj = await loadPlugins(pluginsPath)
   const { loader, gameVersion } = pluginsObj.config
+  console.log(`${output.label('Lockfile')} ${output.highlight(pluginsPath)}`)
   console.log(`${output.label('Server')} ${output.highlight(`${loader} ${gameVersion}`)}`)
   for (const rule of Object.values(pluginsObj.config.substitutes ?? {})) {
     console.log(`${output.label('Substitute')} ${output.highlight(`${rule.slug} → ${rule.substituteSlug}`)}`)
