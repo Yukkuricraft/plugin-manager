@@ -48,10 +48,18 @@ export interface MiscDependencyInfo {
   versionId: string | null
 }
 
+/** A required dependency that a url plugin already in plugins.json stands in for, so nothing is resolved or locked */
+export interface SubstitutedDependencyInfo {
+  type: 'substituted'
+  replacedSlug: string
+  substituteId: string
+}
+
 export type DependencyInfo =
   | EmbeddedDependencyInfo
   | ExternalDependencyInfo
   | RequiredDependencyInfo
+  | SubstitutedDependencyInfo
   | MiscDependencyInfo
 
 /**
@@ -104,6 +112,9 @@ export async function getDependencyInfo(
           `A dependency pins a version of ${rule.slug}, which is substituted by ${rule.substituteSlug}. Using ${rule.substituteSlug} instead`,
         )
         versionId = null
+      }
+      if (rule.substituteSource === 'url') {
+        return { type: 'substituted', replacedSlug: rule.slug, substituteId: rule.substitute }
       }
       projectId = rule.substitute
     }
@@ -323,6 +334,10 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
     case 'optional':
       return chalk.cyanBright(
         `${symbols.info} Optional dependency on ${output.pluginName(info.projectSlug ?? info.projectId)}. Add separately if you want to use this plugin`,
+      )
+    case 'substituted':
+      return chalk.cyanBright(
+        `${symbols.info} ${output.pluginName(info.replacedSlug)} is satisfied by the url plugin ${output.pluginName(info.substituteId)}`,
       )
     case 'required': {
       const indentStr = ' '.repeat(indent + 2)

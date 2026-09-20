@@ -94,6 +94,14 @@ function requests() {
 
 const worldeditToFawe: DependencyContext['substitutes'] = { we: substituteRule() }
 
+const worldeditToUrlFawe: DependencyContext['substitutes'] = {
+  we: substituteRule({
+    substitute: 'FastAsyncWorldEdit',
+    substituteSlug: 'FastAsyncWorldEdit',
+    substituteSource: 'url',
+  }),
+}
+
 function required(projectId: string, versionId: string | null = null) {
   return { project_id: projectId, version_id: versionId, dependency_type: 'required' as const }
 }
@@ -279,6 +287,32 @@ describe('getDependencyInfo', () => {
     expect(requests().map((r) => r.path)).toEqual(['/project/{id|slug}'])
   })
 
+  it('reports a dependency a url plugin substitutes for, without making a request', async () => {
+    const info = await getDependencyInfo(required('we'), 'paper', '1.21.4', { substitutes: worldeditToUrlFawe })
+
+    expect(info).toEqual({ type: 'substituted', replacedSlug: 'worldedit', substituteId: 'FastAsyncWorldEdit' })
+    expect(get).not.toHaveBeenCalled()
+  })
+
+  it('drops a version pin on a project a url plugin substitutes for, with a warning', async () => {
+    const warning = vi.spyOn(output, 'warning').mockImplementation(() => undefined)
+
+    const info = await getDependencyInfo(required('we', 'we-7.4.5'), 'paper', '1.21.4', {
+      substitutes: worldeditToUrlFawe,
+    })
+
+    expect(info).toMatchObject({ type: 'substituted' })
+    expect(warning).toHaveBeenCalledWith(expect.stringContaining('FastAsyncWorldEdit'))
+  })
+
+  it('leaves an optional dependency on a substituted project alone', async () => {
+    const dep = { project_id: 'we', version_id: null, dependency_type: 'optional' as const }
+
+    const info = await getDependencyInfo(dep, 'paper', '1.21.4', { substitutes: worldeditToUrlFawe })
+
+    expect(info).toMatchObject({ type: 'optional' })
+  })
+
   it('applies rules to the dependencies of a resolved plugin', async () => {
     const { dependencies } = await getPluginVersion('craftbook', 'paper', {
       gameVersion: '1.21.4',
@@ -339,6 +373,16 @@ describe('addRequiredDependencies', () => {
     expect(plugins.snap.version).toBe('snapshot')
     expect(plugins.snap.overrides).toEqual({ loader: 'spigot' })
     expect(plugins.snap.dependedOnBy).toEqual(new Set(['other', 'craftbook']))
+  })
+
+  it('locks nothing for a substituted dependency', () => {
+    const all: AllModrinthPlugins = {}
+
+    addRequiredDependencies(all, [
+      { dep: { type: 'substituted', replacedSlug: 'worldedit', substituteId: 'FastAsyncWorldEdit' }, dependant: 'cb' },
+    ])
+
+    expect(all).toEqual({})
   })
 })
 
