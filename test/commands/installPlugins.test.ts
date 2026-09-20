@@ -108,14 +108,20 @@ describe('installPlugins', () => {
     expect(rm).not.toHaveBeenCalledWith('./plugins', expect.anything())
   })
 
-  it('copies each source directory into the plugins folder, then unmanagedPlugins last', async () => {
+  it('copies each source directory into the plugins folder, and nothing else', async () => {
     await installPlugins('./plugins.json')
 
     expect(cp.mock.calls.map(([from, to]: string[]) => [from, to])).toEqual([
       ['./managedPlugins/modrinth', './plugins'],
       ['./managedPlugins/url', './plugins'],
-      ['./unmanagedPlugins', './plugins'],
     ])
+  })
+
+  it('does not create or read unmanagedPlugins', async () => {
+    await installPlugins('./plugins.json')
+
+    expect(mkdir).not.toHaveBeenCalledWith('./unmanagedPlugins', expect.anything())
+    expect(readdir).not.toHaveBeenCalledWith('./unmanagedPlugins')
   })
 
   it('reads the lockfile it was given', async () => {

@@ -6,7 +6,6 @@ import { allPluginSources, type PluginSource } from '../sources/pluginSource.js'
 import { output } from '../utils/output.js'
 
 const managedDir = './managedPlugins'
-const unmanagedDir = './unmanagedPlugins'
 const pluginsDir = './plugins'
 
 /** Where a source stages its downloads. Each source has its own directory, so no source can delete another's files */
@@ -38,7 +37,6 @@ export default async function installPlugins(pluginsPath: string) {
   output.download('Downloading plugins...')
 
   await fs.mkdir(managedDir, { recursive: true })
-  await fs.mkdir(unmanagedDir, { recursive: true })
 
   // managedPlugins holds nothing but the sources' directories. Anything else, such as the JARs saved there before each
   // source had its own directory, is removed
@@ -61,8 +59,6 @@ export default async function installPlugins(pluginsPath: string) {
   for (const source of allPluginSources) {
     await fs.cp(stagingDir(source), pluginsDir, { recursive: true, force: true })
   }
-  // Copied last so its files win, which is how configs are placed over the plugins that read them
-  await fs.cp(unmanagedDir, pluginsDir, { recursive: true, force: true })
 
   output.blank()
   output.success('Installation complete!')

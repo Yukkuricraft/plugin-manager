@@ -217,16 +217,18 @@ supports both.
 ## How it works
 
 Whenever you add, remove or update a plugin, the changes will be reflected in plugins.json. This file acts as the lock
-file, and all installs will be validated against it.
+file, and all installs will be validated against it. It usually lives in the server's own plugins directory rather than
+here — see "Working on another server".
 
-When you install plugins, three folders will be created:
+When you install plugins, two folders are created in this directory, whichever server the lockfile belongs to:
 
 - `managedPlugins` where downloaded plugins go, in a folder for each source: `managedPlugins/modrinth` and
   `managedPlugins/url`. A source only ever changes its own folder, and anything else in `managedPlugins` is deleted.
-- `unmanagedPlugins` where you can put anything that's not managed by the script. Configs go here.
-- `plugins` the contents of each source's folder and of `unmanagedPlugins` merged into one folder. It's only replaced
-  once every download has succeeded, so a failed install leaves the current plugins in place. Files in
-  `unmanagedPlugins` win over downloaded ones with the same name.
+- `plugins` the contents of each source's folder merged into one folder. It's only replaced once every download has
+  succeeded, so a failed install leaves the current plugins in place.
+
+Both are rebuilt from the lockfile, so neither is worth keeping. `plugins` holds nothing but JARs: copy it into the
+server's plugins directory yourself, which adds and replaces JARs there and leaves that server's configs and data alone.
 
 ## Developing
 
