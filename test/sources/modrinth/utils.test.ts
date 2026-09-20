@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { NoCompatibleVersionError } from '../../../src/errors.js'
 import { type AllModrinthPlugins } from '../../../src/pluginList.js'
-import { modrinthEntry } from '../../testFixtures.js'
+import { modrinthEntry, substituteRule } from '../../testFixtures.js'
 import { output } from '../../../src/utils/output.js'
 import {
   addRequiredDependencies,
@@ -92,9 +92,7 @@ function requests() {
   }))
 }
 
-const worldeditToFawe: DependencyContext['substitutes'] = {
-  we: { slug: 'worldedit', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' },
-}
+const worldeditToFawe: DependencyContext['substitutes'] = { we: substituteRule() }
 
 function required(projectId: string, versionId: string | null = null) {
   return { project_id: projectId, version_id: versionId, dependency_type: 'required' as const }

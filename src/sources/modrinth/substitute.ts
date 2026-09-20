@@ -53,7 +53,12 @@ export async function declareSubstitute(
     )
   }
 
-  const rule: SubstituteRule = { slug: plugin.slug, substitute: substitute.id, substituteSlug: substitute.slug }
+  const rule: SubstituteRule = {
+    slug: plugin.slug,
+    substitute: substitute.id,
+    substituteSlug: substitute.slug,
+    substituteSource: 'modrinth',
+  }
   plugins.config.substitutes = { ...rules, [plugin.id]: rule }
   return rule
 }

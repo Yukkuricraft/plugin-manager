@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { UserError } from '../../../src/errors.js'
 import { type Plugins } from '../../../src/pluginList.js'
-import { modrinthEntry } from '../../testFixtures.js'
+import { modrinthEntry, substituteRule } from '../../testFixtures.js'
 import update from '../../../src/sources/modrinth/update.js'
 
 const { get, select } = vi.hoisted(() => ({ get: vi.fn(), select: vi.fn() }))
@@ -231,7 +231,7 @@ describe('update', () => {
       config: {
         loader: 'paper',
         gameVersion: '1.21.4',
-        substitutes: { we: { slug: 'worldedit', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' } },
+        substitutes: { we: substituteRule() },
       },
       added: { 'modrinth:needswe': '1.0.0' },
       all: {

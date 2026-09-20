@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Plugins } from '../../src/pluginList.js'
 import showPlugins from '../../src/commands/showPlugins.js'
+import { substituteRule } from '../testFixtures.js'
 
 const { loadPlugins } = vi.hoisted(() => ({ loadPlugins: vi.fn() }))
 vi.mock('../../src/pluginList.js', async (importOriginal) => ({
@@ -22,7 +23,7 @@ describe('showPlugins', () => {
       config: {
         loader: 'paper',
         gameVersion: '1.21.4',
-        substitutes: { we: { slug: 'worldedit', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' } },
+        substitutes: { we: substituteRule() },
       },
       added: {},
       all: { modrinth: {}, url: {} },

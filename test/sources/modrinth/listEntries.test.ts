@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Plugins } from '../../../src/pluginList.js'
-import { modrinthEntry } from '../../testFixtures.js'
+import { modrinthEntry, substituteRule } from '../../testFixtures.js'
 import listEntries from '../../../src/sources/modrinth/listEntries.js'
 
 const plugins: Plugins = {
@@ -9,7 +9,7 @@ const plugins: Plugins = {
   config: {
     loader: 'paper',
     gameVersion: '1.21.4',
-    substitutes: { we: { slug: 'worldedit', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' } },
+    substitutes: { we: substituteRule() },
   },
   added: { 'modrinth:fastasyncworldedit': '2.15.4' },
   all: {

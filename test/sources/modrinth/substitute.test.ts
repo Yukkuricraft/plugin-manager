@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { UserError } from '../../../src/errors.js'
 import { type Plugins, type SubstituteRule } from '../../../src/pluginList.js'
-import { modrinthEntry } from '../../testFixtures.js'
+import { modrinthEntry, substituteRule } from '../../testFixtures.js'
 import { declareSubstitute, removeSubstitute } from '../../../src/sources/modrinth/substitute.js'
 
 const { get } = vi.hoisted(() => ({ get: vi.fn() }))
@@ -22,7 +22,7 @@ function fakeModrinth(path: string, init: { params: { path: Record<string, strin
   return Promise.resolve(data ? { data } : { data: undefined, error: {}, response: { status: 404 } })
 }
 
-const weToFawe: SubstituteRule = { slug: 'worldedit', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' }
+const weToFawe: SubstituteRule = substituteRule()
 
 function plugins(fields: Partial<Plugins> = {}): Plugins {
   return {
@@ -58,7 +58,7 @@ describe('declareSubstitute', () => {
   })
 
   it('keeps existing rules', async () => {
-    const p = withRules({ other: { slug: 'other', substitute: 'x', substituteSlug: 'x' } })
+    const p = withRules({ other: substituteRule({ slug: 'other', substitute: 'x', substituteSlug: 'x' }) })
     await declareSubstitute(p, 'worldedit', 'fastasyncworldedit')
     expect(Object.keys(p.config.substitutes ?? {}).sort()).toEqual(['other', 'we'])
   })
@@ -74,19 +74,23 @@ describe('declareSubstitute', () => {
   it.each<{ when: string; substitutes: Record<string, SubstituteRule> }>([
     {
       when: 'the replaced project is already replaced',
-      substitutes: { we: { slug: 'worldedit', substitute: 'other', substituteSlug: 'other' } },
+      substitutes: { we: substituteRule({ substitute: 'other', substituteSlug: 'other' }) },
     },
     {
       when: 'the replaced project is already a substitute',
-      substitutes: { other: { slug: 'other', substitute: 'we', substituteSlug: 'worldedit' } },
+      substitutes: { other: substituteRule({ slug: 'other', substitute: 'we', substituteSlug: 'worldedit' }) },
     },
     {
       when: 'the substitute is already replaced',
-      substitutes: { fawe: { slug: 'fastasyncworldedit', substitute: 'other', substituteSlug: 'other' } },
+      substitutes: {
+        fawe: substituteRule({ slug: 'fastasyncworldedit', substitute: 'other', substituteSlug: 'other' }),
+      },
     },
     {
       when: 'the substitute is already a substitute',
-      substitutes: { other: { slug: 'other', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' } },
+      substitutes: {
+        other: substituteRule({ slug: 'other', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' }),
+      },
     },
   ])('refuses when $when', async ({ substitutes }) => {
     const p = withRules(substitutes)
@@ -131,7 +135,10 @@ describe('declareSubstitute', () => {
 
 describe('removeSubstitute', () => {
   it('removes a rule by the replaced project slug, without any request', () => {
-    const p = withRules({ we: weToFawe, other: { slug: 'other', substitute: 'x', substituteSlug: 'x' } })
+    const p = withRules({
+      we: weToFawe,
+      other: substituteRule({ slug: 'other', substitute: 'x', substituteSlug: 'x' }),
+    })
 
     expect(removeSubstitute(p, 'worldedit')).toEqual(weToFawe)
     expect(Object.keys(p.config.substitutes ?? {})).toEqual(['other'])

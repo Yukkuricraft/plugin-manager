@@ -9,14 +9,16 @@ export const pluginsFileVersion = 2
 export const defaultPluginsPath = './plugins.json'
 
 /**
- * A declaration that one Modrinth project satisfies every required dependency on another, such as FastAsyncWorldEdit
- * standing in for WorldEdit. Stored in config.substitutes, keyed by the project ID of the project being replaced. The
- * slugs are only there so plugins.json stays readable, and so messages can name both projects without a request.
+ * A declaration that one plugin satisfies every required dependency on another, such as FastAsyncWorldEdit standing
+ * in for WorldEdit. Stored in config.substitutes, keyed by the Modrinth project ID of the project being replaced.
+ * substituteSource says where the replacement comes from: a Modrinth project ID, or the key of an entry in all.url.
+ * The slugs keep plugins.json readable and let messages name both plugins without a request.
  */
 export const substituteRule = z.object({
   slug: z.string(),
   substitute: z.string(),
   substituteSlug: z.string(),
+  substituteSource: z.enum(['modrinth', 'url']).default('modrinth'),
 })
 export type SubstituteRule = z.infer<typeof substituteRule>
 

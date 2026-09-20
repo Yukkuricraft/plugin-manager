@@ -11,7 +11,7 @@ import {
   pluginsExist,
   writePlugins,
 } from '../src/pluginList.js'
-import { modrinthEntry, urlEntry } from './testFixtures.js'
+import { modrinthEntry, substituteRule, urlEntry } from './testFixtures.js'
 
 let dir: string
 let file: string
@@ -91,12 +91,55 @@ describe('loadPlugins', () => {
       config: {
         ...v2.config,
         substitutes: {
-          '1u6JkXh5': { slug: 'worldedit', substitute: 'z4HZZnLr', substituteSlug: 'fastasyncworldedit' },
+          '1u6JkXh5': substituteRule({ slug: 'worldedit', substitute: 'z4HZZnLr' }),
         },
       },
     }
     await writePlugins(withRules, file)
     expect(await loadPlugins(file)).toEqual(withRules)
+  })
+
+  it('reads a rule written without a source as a modrinth rule', async () => {
+    const onDisk = {
+      version: 2,
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          '1u6JkXh5': { slug: 'worldedit', substitute: 'z4HZZnLr', substituteSlug: 'fastasyncworldedit' },
+        },
+      },
+      added: {},
+      all: { modrinth: {}, url: {} },
+    }
+    await fs.writeFile(file, JSON.stringify(onDisk))
+
+    const loaded = await loadPlugins(file)
+
+    expect(loaded.config.substitutes?.['1u6JkXh5'].substituteSource).toBe('modrinth')
+  })
+
+  it('writes the substitute source back out', async () => {
+    const onDisk = {
+      version: 2,
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          '1u6JkXh5': { slug: 'worldedit', substitute: 'z4HZZnLr', substituteSlug: 'fastasyncworldedit' },
+        },
+      },
+      added: {},
+      all: { modrinth: {}, url: {} },
+    }
+    await fs.writeFile(file, JSON.stringify(onDisk))
+
+    await writePlugins(await loadPlugins(file), file)
+
+    const written = JSON.parse(await fs.readFile(file, 'utf-8')) as {
+      config: { substitutes: Record<string, { substituteSource: string }> }
+    }
+    expect(written.config.substitutes['1u6JkXh5'].substituteSource).toBe('modrinth')
   })
 
   it('round-trips a pinned url entry', async () => {
@@ -146,7 +189,7 @@ describe('pluginsExist', () => {
 })
 
 describe('assertNoSubstitutedPluginsLocked', () => {
-  const worldeditToFawe = { we: { slug: 'worldedit', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' } }
+  const worldeditToFawe = { we: substituteRule() }
 
   function withLocked(modrinth: Plugins['all']['modrinth'], added: Plugins['added'] = {}): Plugins {
     return {
@@ -189,7 +232,7 @@ describe('assertNoSubstitutedPluginsLocked', () => {
     const plugins = withLocked({ fawe: modrinthEntry({ slug: 'fastasyncworldedit', dependedOnBy: new Set(['cb']) }) })
     plugins.config.substitutes = {
       ...worldeditToFawe,
-      fawe: { slug: 'fastasyncworldedit', substitute: 'other', substituteSlug: 'other' },
+      fawe: substituteRule({ slug: 'fastasyncworldedit', substitute: 'other', substituteSlug: 'other' }),
     }
     expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('fastasyncworldedit')
   })

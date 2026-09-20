@@ -1,4 +1,4 @@
-import { type ModrinthPlugin, type UrlPlugin } from '../src/pluginList.js'
+import { type ModrinthPlugin, type SubstituteRule, type UrlPlugin } from '../src/pluginList.js'
 
 /** A lock file entry for tests, with every field defaulted so a test only states what it cares about */
 export function modrinthEntry(fields: Partial<ModrinthPlugin> = {}): ModrinthPlugin {
@@ -27,6 +27,17 @@ export function urlEntry(fields: Partial<UrlPlugin> = {}): UrlPlugin {
     sha512: 'sha512-plugin',
     size: 1,
     pinnedAt: '2025-01-01T00:00:00Z',
+    ...fields,
+  }
+}
+
+/** A substitution rule for tests, defaulting to worldedit replaced by the fastasyncworldedit Modrinth project */
+export function substituteRule(fields: Partial<SubstituteRule> = {}): SubstituteRule {
+  return {
+    slug: 'worldedit',
+    substitute: 'fawe',
+    substituteSlug: 'fastasyncworldedit',
+    substituteSource: 'modrinth',
     ...fields,
   }
 }
