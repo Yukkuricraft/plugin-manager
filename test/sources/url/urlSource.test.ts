@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ValidationError } from '../../../src/errors.js'
 import { type Plugins } from '../../../src/pluginList.js'
 import { urlEntry } from '../../testFixtures.js'
 import urlSource from '../../../src/sources/url/urlSource.js'
@@ -69,5 +70,82 @@ describe('urlSource.addPlugin', () => {
     await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(true)
     expect(inspectDownload).toHaveBeenCalledOnce()
     expect(locked.added['url:vault']).toBe('1.7.3')
+  })
+
+  it('records a path override from the flag', async () => {
+    const locked = plugins()
+
+    await expect(
+      urlSource.addPlugin(locked, `essentials@1.0.0@${url}`, { path: 'PlaceholderAPI/expansions/' }),
+    ).resolves.toBe(true)
+
+    expect(locked.all.url.essentials.overrides).toEqual({ path: 'PlaceholderAPI/expansions' })
+  })
+
+  it('passes the path to pinUrl, so the clash check knows where the file lands', async () => {
+    const locked = plugins({
+      all: { modrinth: {}, url: { other: urlEntry({ filename: 'Vault.jar' }) } },
+    })
+
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, { path: 'expansions' })).resolves.toBe(true)
+  })
+
+  it('keeps an existing path override when no flag is passed', async () => {
+    const locked = plugins({
+      added: { 'url:essentials': '1.0.0' },
+      all: {
+        modrinth: {},
+        url: { essentials: urlEntry({ url, version: '1.0.0', overrides: { path: 'PlaceholderAPI/expansions' } }) },
+      },
+    })
+
+    await expect(urlSource.addPlugin(locked, `essentials@1.1.0@${url}`, {})).resolves.toBe(true)
+
+    expect(locked.all.url.essentials.overrides).toEqual({ path: 'PlaceholderAPI/expansions' })
+  })
+
+  it('drops the override when the flag is empty', async () => {
+    const locked = plugins({
+      added: { 'url:essentials': '1.0.0' },
+      all: {
+        modrinth: {},
+        url: { essentials: urlEntry({ url, version: '1.0.0', overrides: { path: 'PlaceholderAPI/expansions' } }) },
+      },
+    })
+
+    await expect(urlSource.addPlugin(locked, `essentials@1.0.0@${url}`, { path: '' })).resolves.toBe(true)
+
+    expect(locked.all.url.essentials.overrides).toBeUndefined()
+  })
+
+  it('pins again when only the path changed', async () => {
+    const locked = plugins({
+      added: { 'url:essentials': '1.0.0' },
+      all: { modrinth: {}, url: { essentials: urlEntry({ url, version: '1.0.0' }) } },
+    })
+
+    await expect(urlSource.addPlugin(locked, `essentials@1.0.0@${url}`, { path: 'expansions' })).resolves.toBe(true)
+
+    expect(inspectDownload).toHaveBeenCalledOnce()
+    expect(locked.all.url.essentials.overrides).toEqual({ path: 'expansions' })
+  })
+
+  it('does nothing when the URL, version and path all match', async () => {
+    const locked = plugins({
+      added: { 'url:essentials': '1.0.0' },
+      all: {
+        modrinth: {},
+        url: { essentials: urlEntry({ url, version: '1.0.0', overrides: { path: 'expansions' } }) },
+      },
+    })
+
+    await expect(urlSource.addPlugin(locked, `essentials@1.0.0@${url}`, { path: 'expansions' })).resolves.toBe(false)
+    expect(inspectDownload).not.toHaveBeenCalled()
+  })
+
+  it('rejects a path that would escape the plugins folder', async () => {
+    await expect(urlSource.addPlugin(plugins(), `essentials@1.0.0@${url}`, { path: '../../etc' })).rejects.toThrow(
+      ValidationError,
+    )
   })
 })

@@ -8,6 +8,8 @@ import urlSource from './url/urlSource.js'
 /** The command-line flags `add` passes through to a plugin source when resolving each plugin it's given */
 export interface AddFlags extends ResolutionFlags {
   featured?: boolean
+  /** A directory inside the plugins folder to install into. Only url plugins take one; an empty string drops it */
+  path?: string
 }
 
 /** The Minecraft version (and optional featured-only filter) that `update` resolves plugins.json against */

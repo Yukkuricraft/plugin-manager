@@ -25,6 +25,8 @@ const updateGameVersionDescription =
   'The Minecraft version to update plugins for, e.g. "1.21.4". Asked for if not given, defaulting to the one in plugins.json, which is then updated to match.'
 const featuredDescription =
   'Only consider plugin versions the author has marked as featured on Modrinth. Does not apply to dependencies, and is not remembered between runs.'
+const addPathDescription =
+  'Install the plugin into this directory inside the plugins folder, e.g. "PlaceholderAPI/expansions", recording it as an override on the plugin. Only applies to url plugins. Kept on later adds; pass an empty string to drop it.'
 const versionSyntaxDescription =
   'To pin a Modrinth plugin to a specific version, use "<plugin>@<version>". The version must exactly match the Modrinth version number. If omitted, the latest matching version is resolved.'
 const envDescription =
@@ -114,12 +116,17 @@ await yargs()
         .option('featured', {
           type: 'boolean',
           describe: featuredDescription,
+        })
+        .option('path', {
+          type: 'string',
+          describe: addPathDescription,
         }),
     async (argv) =>
       addPlugins(await resolvePluginsPath(argv), argv.plugin, {
         loader: argv.loader,
         gameVersion: argv.gameVersion,
         featured: argv.featured,
+        path: argv.path,
       }),
   )
   .command(
