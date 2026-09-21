@@ -43,16 +43,14 @@ export async function declareSubstitute(
     throw new UserError(`${plugin.slug} can't substitute for itself`)
   }
 
+  // Only Modrinth projects are held to one rule each, which is what stops a rule chaining into another. A url
+  // plugin stands in for as many projects as the user declares, since rules are keyed by Modrinth project ID and
+  // nothing can replace a url plugin in turn.
   const rules = plugins.config.substitutes ?? {}
-  const parties: { id: string; slug: string; source: 'modrinth' | 'url' }[] = [
-    { ...plugin, source: 'modrinth' },
-    substitute,
-  ]
+  const parties = [plugin, ...(substitute.source === 'modrinth' ? [substitute] : [])]
   for (const party of parties) {
     const existing = Object.entries(rules).find(
-      ([id, rule]) =>
-        (party.source === 'modrinth' && id === party.id) ||
-        (rule.substituteSource === party.source && rule.substitute === party.id),
+      ([id, rule]) => id === party.id || (rule.substituteSource === 'modrinth' && rule.substitute === party.id),
     )
     if (existing) {
       const [, rule] = existing

@@ -169,18 +169,20 @@ describe('declareSubstitute', () => {
     expect(p.config.substitutes).toBeUndefined()
   })
 
-  it('refuses a url plugin that already substitutes for something', async () => {
-    const p = withRules({
-      other: substituteRule({
-        slug: 'other',
-        substitute: 'FastAsyncWorldEdit',
-        substituteSlug: 'FastAsyncWorldEdit',
-        substituteSource: 'url',
-      }),
+  it('lets one url plugin substitute for several projects', async () => {
+    const existing = substituteRule({
+      slug: 'other',
+      substitute: 'FastAsyncWorldEdit',
+      substituteSlug: 'FastAsyncWorldEdit',
+      substituteSource: 'url',
     })
+    const p = withRules({ other: existing })
     p.all.url = { FastAsyncWorldEdit: urlEntry() }
 
-    await expect(declareSubstitute(p, 'worldedit', 'url:FastAsyncWorldEdit')).rejects.toThrow(UserError)
+    const rule = await declareSubstitute(p, 'worldedit', 'url:FastAsyncWorldEdit')
+
+    expect(rule.substituteSource).toBe('url')
+    expect(p.config.substitutes).toEqual({ other: existing, we: rule })
   })
 
   it('lets a url plugin substitute for a project whose id matches a modrinth substitute', async () => {

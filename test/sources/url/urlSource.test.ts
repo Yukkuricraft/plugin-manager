@@ -115,4 +115,30 @@ describe('urlSource.listEntries', () => {
 
     expect(urlSource.listEntries(p)[0].substitutes).toBeUndefined()
   })
+
+  it('names every project one url plugin substitutes for', () => {
+    const p = plugins({
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          we: {
+            slug: 'worldedit',
+            substitute: 'FastAsyncWorldEdit',
+            substituteSlug: 'FastAsyncWorldEdit',
+            substituteSource: 'url',
+          },
+          fawe: {
+            slug: 'fastasyncworldedit',
+            substitute: 'FastAsyncWorldEdit',
+            substituteSlug: 'FastAsyncWorldEdit',
+            substituteSource: 'url',
+          },
+        },
+      },
+      all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() } },
+    })
+
+    expect(urlSource.listEntries(p)[0].substitutes).toBe('fastasyncworldedit, worldedit')
+  })
 })

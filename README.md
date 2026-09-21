@@ -127,7 +127,8 @@ there is one. WorldEdit itself can't be added while the substitution exists, and
 
 A substitution can't be declared while the plugin being replaced is installed, since both would end up installed. Remove
 it first; or, if other plugins pulled it in, remove them, declare the substitution, then add them back so they pick up
-the substitute. A plugin can only be part of one substitution.
+the substitute. A Modrinth project can be part of one substitution; a url plugin can stand in for several projects at
+once.
 
 To drop a substitution:
 
