@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { UserError } from '../../src/errors.js'
 import { type Plugins } from '../../src/pluginList.js'
-import { modrinthEntry } from '../testFixtures.js'
+import { modrinthEntry, substituteRule } from '../testFixtures.js'
 import installPlugins from '../../src/commands/installPlugins.js'
 
 const { loadPlugins, rm, mkdir, cp, readdir, modrinthInstall, urlInstall } = vi.hoisted(() => ({
@@ -34,7 +34,7 @@ function plugins(modrinth: Plugins['all']['modrinth'] = {}): Plugins {
     config: {
       loader: 'paper',
       gameVersion: '1.21.4',
-      substitutes: { we: { slug: 'worldedit', substitute: 'fawe', substituteSlug: 'fastasyncworldedit' } },
+      substitutes: { we: substituteRule() },
     },
     added: {},
     all: { modrinth, url: {} },

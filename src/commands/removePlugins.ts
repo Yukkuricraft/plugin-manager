@@ -2,6 +2,7 @@ import { loadPlugins, type Plugin, type Plugins, writePlugins } from '../pluginL
 import { getPluginSource, PluginSource } from '../sources/pluginSource.js'
 import installPlugins from './installPlugins.js'
 import { SanityCheckError, UserError } from '../errors.js'
+import { assertNotSubstituting } from '../substitute.js'
 
 export default async function removePlugins(pluginsPath: string, pluginsToRemove: string[]) {
   const plugins = await loadPlugins(pluginsPath)
@@ -17,6 +18,14 @@ export default async function removePlugins(pluginsPath: string, pluginsToRemove
   if (notFound.length > 0) {
     throw new UserError(`Could not find plugins ${notFound.map(({ identifier }) => identifier).join(', ')}`)
   }
+
+  assertNotSubstituting(
+    plugins,
+    toRemove.map(({ pluginAndId }) => {
+      if (pluginAndId === null) throw new SanityCheckError('Plugin is null')
+      return pluginAndId
+    }),
+  )
 
   const sources = new Map<PluginSource, { plugin: Plugin; id: string }[]>()
   toRemove.forEach(({ source, pluginAndId }) => {

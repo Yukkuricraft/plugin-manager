@@ -38,7 +38,7 @@ describe('urlSource.addPlugin', () => {
   it('pins the file and records the version as the added value', async () => {
     const locked = plugins()
 
-    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(true)
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`)).resolves.toBe(true)
 
     expect(locked.added).toEqual({ 'url:vault': '1.7.3' })
     expect(locked.all.url.vault).toEqual({
@@ -56,7 +56,7 @@ describe('urlSource.addPlugin', () => {
       all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.3' }) } },
     })
 
-    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(false)
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`)).resolves.toBe(false)
     expect(inspectDownload).not.toHaveBeenCalled()
   })
 
@@ -66,8 +66,79 @@ describe('urlSource.addPlugin', () => {
       all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.2' }) } },
     })
 
-    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`, {})).resolves.toBe(true)
+    await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`)).resolves.toBe(true)
     expect(inspectDownload).toHaveBeenCalledOnce()
     expect(locked.added['url:vault']).toBe('1.7.3')
+  })
+})
+
+describe('urlSource.listEntries', () => {
+  it('tags the entry a url rule names', () => {
+    const p = plugins({
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          we: {
+            slug: 'worldedit',
+            substitute: 'FastAsyncWorldEdit',
+            substituteSlug: 'FastAsyncWorldEdit',
+            substituteSource: 'url',
+          },
+        },
+      },
+      all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry(), Vault: urlEntry() } },
+    })
+
+    const entries = urlSource.listEntries(p)
+
+    expect(entries.find((e) => e.name === 'FastAsyncWorldEdit')?.substitutes).toBe('worldedit')
+    expect(entries.find((e) => e.name === 'Vault')?.substitutes).toBeUndefined()
+  })
+
+  it('ignores a modrinth rule whose substitute id matches a url plugin', () => {
+    const p = plugins({
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          we: {
+            slug: 'worldedit',
+            substitute: 'fawe',
+            substituteSlug: 'fastasyncworldedit',
+            substituteSource: 'modrinth',
+          },
+        },
+      },
+      all: { modrinth: {}, url: { fawe: urlEntry() } },
+    })
+
+    expect(urlSource.listEntries(p)[0].substitutes).toBeUndefined()
+  })
+
+  it('names every project one url plugin substitutes for', () => {
+    const p = plugins({
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          we: {
+            slug: 'worldedit',
+            substitute: 'FastAsyncWorldEdit',
+            substituteSlug: 'FastAsyncWorldEdit',
+            substituteSource: 'url',
+          },
+          fawe: {
+            slug: 'fastasyncworldedit',
+            substitute: 'FastAsyncWorldEdit',
+            substituteSlug: 'FastAsyncWorldEdit',
+            substituteSource: 'url',
+          },
+        },
+      },
+      all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() } },
+    })
+
+    expect(urlSource.listEntries(p)[0].substitutes).toBe('fastasyncworldedit, worldedit')
   })
 })
