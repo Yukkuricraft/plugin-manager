@@ -1,8 +1,9 @@
 import fs from 'fs/promises'
 
 import { UserError } from '../errors.js'
-import { assertNoSubstitutedPluginsLocked, loadPlugins } from '../pluginList.js'
+import { loadPlugins } from '../pluginList.js'
 import { allPluginSources, type PluginSource } from '../sources/pluginSource.js'
+import { assertNoSubstitutedPluginsLocked } from '../substitute.js'
 import { output } from '../utils/output.js'
 
 const managedDir = './managedPlugins'

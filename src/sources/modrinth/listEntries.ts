@@ -6,7 +6,9 @@ export default function listEntries(plugins: Plugins): ModrinthPluginEntry[] {
   const nameById = new Map(modrinthPlugins.map(([id, p]) => [id, p.slug ?? id]))
   // Keyed by a substitute's project ID, holding the slug of the project it replaces
   const replacedSlugBySubstituteId = new Map(
-    Object.values(plugins.config.substitutes ?? {}).map((r) => [r.substitute, r.slug]),
+    Object.values(plugins.config.substitutes ?? {})
+      .filter((r) => r.substituteSource === 'modrinth')
+      .map((r) => [r.substitute, r.slug]),
   )
 
   return modrinthPlugins.map(([id, plugin]) => {
