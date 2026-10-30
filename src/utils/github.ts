@@ -40,7 +40,7 @@ export function parseRepo(repo: string): { owner: string; name: string } {
 
 /**
  * Sends one request to GitHub with the token. Throws a UserError before sending if there's no token, and a
- * RequestError carrying the status and GitHub's message if the answer isn't 2xx.
+ * RequestError carrying the status and GitHub's message if the answer is neither 2xx nor in `allowStatuses`.
  */
 async function request(
   action: string,
@@ -48,10 +48,11 @@ async function request(
   access: 'read' | 'write',
   url: string,
   init: { method?: string; headers?: Record<string, string>; body?: BodyInit } = {},
+  allowStatuses: number[] = [],
 ): Promise<Response> {
   const token = githubToken()
   if (!token) {
-    throw new UserError(`${action} needs GITHUB_TOKEN set to a token that can ${access} ${repo}`)
+    throw new UserError(`${action} needs GITHUB_TOKEN set to a token with Contents: ${access} on ${repo}`)
   }
 
   const res = await fetch(url, {
@@ -63,7 +64,7 @@ async function request(
       Authorization: `Bearer ${token}`,
     },
   })
-  if (!res.ok) {
+  if (!res.ok && !allowStatuses.includes(res.status)) {
     const body = (await res.json().catch(() => undefined)) as { message?: string } | undefined
     throw new RequestError(`${action} failed (${res.status}): ${body?.message ?? res.statusText}`)
   }
@@ -86,6 +87,21 @@ export async function listReleases(repo: string, opts: { includeDrafts?: boolean
     if (batch.length < pageSize) break
   }
   return opts.includeDrafts ? releases : releases.filter((release) => !release.draft)
+}
+
+/** Whether `repo` has the git tag `tag`, with or without a release */
+export async function tagExists(repo: string, tag: string): Promise<boolean> {
+  const { owner, name } = parseRepo(repo)
+  const tagPath = tag.split('/').map(encodeURIComponent).join('/')
+  const res = await request(
+    `Looking up tag ${tag} in ${repo}`,
+    repo,
+    'read',
+    `${apiBase}/repos/${owner}/${name}/git/ref/tags/${tagPath}`,
+    {},
+    [404],
+  )
+  return res.status !== 404
 }
 
 export async function createDraftRelease(repo: string, tag: string, title: string): Promise<GitHubRelease> {

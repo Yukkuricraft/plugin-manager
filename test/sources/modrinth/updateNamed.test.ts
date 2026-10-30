@@ -27,7 +27,11 @@ function modrinthVersion(
     game_versions: gameVersions,
     date_published: publishedAt,
     changelog: `Changes in ${versionNumber}`,
-    dependencies: dependsOn.map((id) => ({ project_id: id, version_id: null, dependency_type: 'required' })),
+    dependencies: dependsOn.map((id) => ({
+      project_id: id,
+      version_id: null as string | null,
+      dependency_type: 'required',
+    })),
     files: [
       {
         primary: true,
@@ -40,7 +44,15 @@ function modrinthVersion(
   }
 }
 
-let catalogue: Record<string, ReturnType<typeof modrinthVersion>[]> = {}
+type FakeVersion = ReturnType<typeof modrinthVersion>
+type FakeDependency = FakeVersion['dependencies'][number]
+
+/** `version` with `dependencies` in place of its own */
+function withDependencies(version: FakeVersion, dependencies: FakeDependency[]): FakeVersion {
+  return { ...version, dependencies }
+}
+
+let catalogue: Record<string, FakeVersion[]> = {}
 
 /** Serves the project and version-list endpoints from `catalogue`, filtering by game_versions as Modrinth does */
 function fakeModrinth(
@@ -50,6 +62,11 @@ function fakeModrinth(
   if (path === '/project/{id|slug}') {
     const id = init.params.path['id|slug']
     return Promise.resolve({ data: { id, slug: id } })
+  }
+  if (path === '/project/{id|slug}/version/{id|number}') {
+    const versions = catalogue[init.params.path['id|slug']] ?? []
+    const version = versions.find((v) => v.id === init.params.path['id|number'])
+    return Promise.resolve(version ? { data: version } : { error: 'Not found', response: { status: 404 } })
   }
   if (path !== '/project/{id|slug}/version') throw new Error(`Unexpected request to ${path}`)
   const versions = catalogue[init.params.path['id|slug']] ?? []
@@ -171,6 +188,100 @@ describe('updateNamed', () => {
 
     expect(next.all.modrinth.x).toMatchObject({ version: '1.0.0', dependedOnBy: new Set(['a', 'b']) })
     expect(printed()).toContain('Not updating x because plugins other than a use it (b)')
+  })
+
+  it("keeps a shared dependency's pin when the new build pins another build of it", async () => {
+    catalogue = {
+      a: [
+        withDependencies(modrinthVersion('a', '2.0.0', ['1.21.4'], newer), [
+          { project_id: 'x', version_id: 'x-1.1.0', dependency_type: 'required' },
+        ]),
+      ],
+      x: [modrinthVersion('x', '1.0.0', ['1.21.4'], old), modrinthVersion('x', '1.1.0', ['1.21.4'], newer)],
+    }
+    const next = plugins(['a', 'b'], {
+      a: entry('a', '1.0.0'),
+      b: entry('b', '1.0.0'),
+      x: entry('x', '1.0.0', { dependedOnBy: new Set(['a', 'b']) }),
+    })
+
+    const result = await updateNamed(next, ['a'])
+
+    expect(next.all.modrinth.x).toMatchObject({ versionId: 'x-1.0.0', dependedOnBy: new Set(['a', 'b']) })
+    expect(result.changed.map((c) => c.identifier)).toEqual(['a'])
+    expect(printed()).toContain('Not updating x because plugins other than a use it (b)')
+    expect(printed()).toContain('a pins x 1.1.0, but x stays at 1.0.0 because plugins other than a use it (b)')
+  })
+
+  it('reports reusing a shared entry the new build starts depending on', async () => {
+    catalogue = { a: [modrinthVersion('a', '2.0.0', ['1.21.4'], newer, ['x'])] }
+    const next = plugins(['a', 'b'], {
+      a: entry('a', '1.0.0'),
+      b: entry('b', '1.0.0'),
+      x: entry('x', '1.0.0', { dependedOnBy: new Set(['b']) }),
+    })
+
+    await updateNamed(next, ['a'])
+
+    expect(next.all.modrinth.x).toMatchObject({ version: '1.0.0', dependedOnBy: new Set(['a', 'b']) })
+    expect(printed()).toContain('Not updating x because plugins other than a use it (b)')
+  })
+
+  it('reports adding a dependency the new build needs, and its own dependencies', async () => {
+    catalogue = {
+      a: [modrinthVersion('a', '2.0.0', ['1.21.4'], newer, ['y'])],
+      y: [modrinthVersion('y', '1.0.0', ['1.21.4'], newer, ['z'])],
+      z: [modrinthVersion('z', '1.0.0', ['1.21.4'], newer)],
+    }
+    const next = plugins(['a'], { a: entry('a', '1.0.0') })
+
+    const result = await updateNamed(next, ['a'])
+
+    expect(result.added).toEqual(['y', 'z'])
+    expect(printed()).toContain('Adding y because a needs it')
+    expect(printed()).toContain('Adding z because y needs it')
+  })
+
+  it('says a re-resolved dependency already at the build it resolves to is not updated', async () => {
+    catalogue = {
+      a: [modrinthVersion('a', '2.0.0', ['1.21.4'], newer, ['x'])],
+      x: [modrinthVersion('x', '1.0.0', ['1.21.4'], old)],
+    }
+    const next = plugins(['a'], { a: entry('a', '1.0.0'), x: entry('x', '1.0.0', { dependedOnBy: new Set(['a']) }) })
+
+    await updateNamed(next, ['a'])
+
+    expect(next.all.modrinth.x.versionId).toBe('x-1.0.0')
+    expect(printed()).toContain('Not updating x because 1.0.0 is the build a needs')
+    expect(printed()).not.toContain('Updating x')
+  })
+
+  it('prints the dependencies of the new build, warning about an incompatible installed plugin', async () => {
+    catalogue = {
+      a: [
+        withDependencies(modrinthVersion('a', '2.0.0', ['1.21.4'], newer), [
+          { project_id: 'b', version_id: null, dependency_type: 'incompatible' },
+        ]),
+      ],
+    }
+    const next = plugins(['a', 'b'], { a: entry('a', '1.0.0'), b: entry('b', '1.0.0') })
+
+    await updateNamed(next, ['a'])
+
+    expect(printed()).toContain('a has dependencies:')
+    expect(printed()).toContain('Incompatible with plugin b. Proceed with caution.')
+  })
+
+  it('offers the current build when another build shares its version number', async () => {
+    const current = { ...modrinthVersion('a', '1.0.0', ['1.21.4'], old), loaders: ['paper', 'spigot'] }
+    const specific = { ...modrinthVersion('a', '1.0.0', ['1.21.4'], old), id: 'a-1.0.0-paper' }
+    catalogue = { a: [current, specific] }
+    const next = plugins(['a'], { a: entry('a', '1.0.0') })
+
+    const result = await updateNamed(next, ['a'])
+
+    expect(next.all.modrinth.a.versionId).toBe('a-1.0.0')
+    expect(result.changed).toEqual([])
   })
 
   it('drops a dependency the new build no longer needs', async () => {

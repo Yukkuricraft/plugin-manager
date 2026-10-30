@@ -15,7 +15,13 @@ import { type Loader } from './loaders.js'
 import type { components } from './modrinth.js'
 import modrinthSource from './modrinthSource.js'
 import { listBuilds, pickBuild } from './pickBuild.js'
-import { addRequiredDependencies, getPluginVersion } from './utils.js'
+import {
+  addRequiredDependencies,
+  type DependencyInfo,
+  formatDependencyInfo,
+  getPluginVersion,
+  type RequiredDependencyInfo,
+} from './utils.js'
 
 /**
  * The project IDs of the entries in `all` that only the plugins in `named` need: entries that weren't added
@@ -89,10 +95,10 @@ export async function updateNamed(next: Plugins, ids: string[]): Promise<UpdateR
     const { loader } = resolveTarget(config, old.overrides, {})
     const held = old.overrides?.gameVersion
     let gameVersion = config.gameVersion
-    let builds = await listBuilds(id, loader, gameVersion)
+    let builds = await listBuilds(id, loader, gameVersion, old.versionId)
     if (builds.length === 0 && held !== undefined) {
       gameVersion = held
-      builds = await listBuilds(id, loader, gameVersion)
+      builds = await listBuilds(id, loader, gameVersion, old.versionId)
     }
     if (builds.length === 0) {
       output.warning(`${slug} has no candidate builds for Minecraft ${gameVersion}`)
@@ -143,7 +149,12 @@ export async function updateNamed(next: Plugins, ids: string[]): Promise<UpdateR
     next.added[`modrinth:${c.slug}`] = version
   }
 
+  // The entries in the lockfile now: kept entries and the picked builds. They keep their builds even when a new
+  // build pins another, since other plugins use them or the user just picked them
+  const lockOverPins = new Set(Object.keys(all))
   const changelogs: [string, [string, string][]][] = []
+  const trees: [string, DependencyInfo[]][] = []
+  const pins: Pin[] = []
   for (const c of changes) {
     const resolved = await getPluginVersion(c.id, c.loader, {
       targetVersionId: c.build.id,
@@ -152,13 +163,21 @@ export async function updateNamed(next: Plugins, ids: string[]): Promise<UpdateR
       fromDate: c.old.publishedAt,
       changelog: true,
       // Locked entries resolve to the build they're at, so the dependencies left in the lockfile keep their pins
-      dependencyContext: { substitutes: config.substitutes, locked: all },
+      dependencyContext: { substitutes: config.substitutes, locked: all, lockOverPins },
     })
     addRequiredDependencies(
       all,
       resolved.dependencies.map((dep) => ({ dep, dependant: c.id })),
     )
     changelogs.push([c.slug, resolved.changelog])
+    trees.push([c.slug, resolved.dependencies])
+    pins.push(...overriddenPins(c.id, resolved.dependencies))
+  }
+
+  for (const [slug, dependencies] of trees) {
+    if (dependencies.length === 0) continue
+    output.dependency(`${output.pluginName(slug)} has dependencies:`)
+    for (const d of dependencies) console.log(`  ${formatDependencyInfo(d, next, 2)}`)
   }
 
   const changelog = changelogs
@@ -168,40 +187,95 @@ export async function updateNamed(next: Plugins, ids: string[]): Promise<UpdateR
     )
     .join('\n\n')
 
-  reportDependencies(before, all, changed, exclusive)
+  reportDependencies(before, all, next.added, changed, exclusive, pins)
   return { changelog, ...diffModrinth(before, all), overrides: overrideChanges }
 }
 
+/** A dependency pin that `dependant`'s new build has on `projectId`, which the lockfile's build overrode */
+interface Pin {
+  dependant: string
+  projectId: string
+  pinned: string
+  kept: string
+}
+
+/** The pins in the dependency tree of `dependant` that the lockfile's builds overrode */
+function overriddenPins(dependant: string, dependencies: DependencyInfo[]): Pin[] {
+  return dependencies
+    .filter((d): d is RequiredDependencyInfo => d.type === 'required')
+    .flatMap((d) => [
+      ...(d.overriddenPin
+        ? [{ dependant, projectId: d.projectId, pinned: d.overriddenPin.version, kept: d.version }]
+        : []),
+      ...overriddenPins(d.projectId, d.dependencies),
+    ])
+}
+
 /**
- * Says what happened to each entry that a replaced plugin or dependency depended on: re-resolved, removed because no
- * new build needs it, or kept at its build because something else uses it too
+ * Says what happened to each entry that a replaced plugin or dependency depended on, and to each entry that a new
+ * build depends on: re-resolved, added, removed because no new build needs it, or kept at its build because
+ * something else uses it too. Then warns about each pin a kept build overrode.
  */
 function reportDependencies(
   before: AllModrinthPlugins,
   after: AllModrinthPlugins,
+  added: Plugins['added'],
   changed: Set<string>,
   exclusive: Set<string>,
+  pins: Pin[],
 ) {
-  const name = (id: string) => before[id]?.slug ?? id
-  const list = (ids: string[]) => ids.map(name).sort().join(', ')
-  for (const [id, entry] of Object.entries(before)) {
-    if (changed.has(id)) continue
-    const dependants = [...entry.dependedOnBy]
-    const replacedDependants = dependants.filter((d) => changed.has(d) || exclusive.has(d))
-    if (replacedDependants.length === 0) continue
+  const name = (id: string) => before[id]?.slug ?? after[id]?.slug ?? id
+  const list = (ids: Iterable<string>) => [...ids].map(name).sort().join(', ')
+  const replaced = (id: string) => changed.has(id) || exclusive.has(id)
+  // Why `id` keeps its build even though `users` changed
+  const keptBecause = (id: string, users: string) => {
+    if (changed.has(id)) return `it's the build picked for it`
+    const others = [...(before[id]?.dependedOnBy ?? [])].filter((d) => !replaced(d))
+    if (others.length > 0) return `plugins other than ${users} use it (${list(others)})`
+    const slug = before[id]?.slug
+    if (slug && `modrinth:${slug}` in added) return 'it was added to plugins.json itself'
+    return 'it was already in plugins.json'
+  }
 
-    const users = list(replacedDependants)
-    if (exclusive.has(id)) {
-      if (id in after) {
-        output.info(`Updating ${name(id)} because only ${users} ${replacedDependants.length > 1 ? 'use' : 'uses'} it`)
-      } else {
-        output.info(`Removing ${name(id)} because only ${users} used it`)
-      }
-      continue
+  for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (changed.has(id)) continue
+    const old = before[id]
+    const now = after[id]
+    const oldDependants = [...(old?.dependedOnBy ?? [])]
+    // The dependants that changed, or that depend on it for the first time
+    const users = [
+      ...new Set([
+        ...oldDependants.filter(replaced),
+        ...[...(now?.dependedOnBy ?? [])].filter((d) => !old?.dependedOnBy.has(d)),
+      ]),
+    ]
+    if (users.length === 0) continue
+
+    const userList = list(users)
+    const plural = users.length > 1
+    if (!now) {
+      output.info(`Removing ${name(id)} because only ${userList} used it`)
+    } else if (!old) {
+      output.info(`Adding ${name(id)} because ${userList} ${plural ? 'need' : 'needs'} it`)
+    } else if (now.versionId !== old.versionId) {
+      const because = exclusive.has(id)
+        ? `only ${userList} ${plural ? 'use' : 'uses'} it`
+        : `${userList} ${plural ? 'need' : 'needs'} a newer build`
+      output.info(`Updating ${name(id)} because ${because}`)
+    } else if (exclusive.has(id)) {
+      output.info(
+        `Not updating ${name(id)} because ${now.version} is the build ${userList} ${plural ? 'need' : 'needs'}`,
+      )
+    } else {
+      output.warning(`Not updating ${name(id)} because ${keptBecause(id, userList)}`)
     }
-    const others = dependants.filter((d) => !replacedDependants.includes(d))
-    const because =
-      others.length > 0 ? `plugins other than ${users} use it (${list(others)})` : 'it was added to plugins.json itself'
-    output.warning(`Not updating ${name(id)} because ${because}`)
+  }
+
+  for (const pin of pins) {
+    const dependant = name(pin.dependant)
+    const dependency = name(pin.projectId)
+    output.warning(
+      `${dependant} pins ${dependency} ${pin.pinned}, but ${dependency} stays at ${pin.kept} because ${keptBecause(pin.projectId, dependant)}`,
+    )
   }
 }

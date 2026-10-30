@@ -62,9 +62,49 @@ describe('pickBuild', () => {
 })
 
 describe('listBuilds', () => {
+  const tagged = (
+    id: string,
+    versionNumber: string,
+    loaders: string[],
+    publishedAt: string,
+    status: 'listed' | 'unlisted' = 'listed',
+  ) => ({ id, version_number: versionNumber, loaders, status, date_published: publishedAt }) as Version
+
+  it('asks Modrinth for the builds of the Minecraft version', async () => {
+    get.mockResolvedValue({ data: [] })
+
+    await listBuilds('fawe', 'paper', '1.21.4')
+
+    expect(get).toHaveBeenCalledWith('/project/{id|slug}/version', {
+      params: { path: { 'id|slug': 'fawe' }, query: { game_versions: '["1.21.4"]' } },
+    })
+  })
+
+  it('sorts the builds newest first', async () => {
+    get.mockResolvedValue({
+      data: [
+        tagged('b', '2', ['paper'], '2026-02-01T00:00:00Z'),
+        tagged('a', '1', ['paper'], '2026-01-01T00:00:00Z'),
+        tagged('c', '3', ['paper'], '2026-03-01T00:00:00Z'),
+      ],
+    })
+
+    expect((await listBuilds('fawe', 'paper', '1.21.4')).map((b) => b.id)).toEqual(['c', 'b', 'a'])
+  })
+
+  it('leaves out unlisted builds and builds for other loaders', async () => {
+    get.mockResolvedValue({
+      data: [
+        tagged('hidden', '2', ['paper'], '2026-02-01T00:00:00Z', 'unlisted'),
+        tagged('fabric', '3', ['fabric'], '2026-03-01T00:00:00Z'),
+        tagged('shown', '1', ['paper'], '2026-01-01T00:00:00Z'),
+      ],
+    })
+
+    expect((await listBuilds('fawe', 'paper', '1.21.4')).map((b) => b.id)).toEqual(['shown'])
+  })
+
   it('keeps the most loader-specific build of each version number, newest first', async () => {
-    const tagged = (id: string, versionNumber: string, loaders: string[], publishedAt: string) =>
-      ({ id, version_number: versionNumber, loaders, status: 'listed', date_published: publishedAt }) as Version
     get.mockResolvedValue({
       data: [
         tagged('old', '2.15.0', ['paper', 'spigot'], '2026-01-01T00:00:00Z'),
@@ -76,5 +116,18 @@ describe('listBuilds', () => {
     const builds = await listBuilds('fawe', 'paper', '1.21.4')
 
     expect(builds.map((b) => b.id)).toEqual(['paper', 'old'])
+  })
+
+  it('keeps the current build over a more loader-specific one with its version number', async () => {
+    get.mockResolvedValue({
+      data: [
+        tagged('generic', '2.15.1', ['paper', 'spigot'], '2026-02-01T00:00:00Z'),
+        tagged('paper', '2.15.1', ['paper'], '2026-02-01T00:00:00Z'),
+      ],
+    })
+
+    const builds = await listBuilds('fawe', 'paper', '1.21.4', 'generic')
+
+    expect(builds.map((b) => b.id)).toEqual(['generic'])
   })
 })

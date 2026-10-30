@@ -8,21 +8,22 @@ import publish from '../../src/commands/publish.js'
 import { UserError, ValidationError } from '../../src/errors.js'
 import { asset, release } from '../sources/ghRelease/fixtures.js'
 
-const { input, listReleases, createDraftRelease, uploadReleaseAsset, publishRelease, deleteRelease } = vi.hoisted(
-  () => ({
+const { input, listReleases, tagExists, createDraftRelease, uploadReleaseAsset, publishRelease, deleteRelease } =
+  vi.hoisted(() => ({
     input: vi.fn(),
     listReleases: vi.fn(),
+    tagExists: vi.fn(),
     createDraftRelease: vi.fn(),
     uploadReleaseAsset: vi.fn(),
     publishRelease: vi.fn(),
     deleteRelease: vi.fn(),
-  }),
-)
+  }))
 
 vi.mock('@inquirer/prompts', () => ({ input }))
 vi.mock('../../src/utils/github.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../src/utils/github.js')>()),
   listReleases,
+  tagExists,
   createDraftRelease,
   uploadReleaseAsset,
   publishRelease,
@@ -45,6 +46,7 @@ beforeEach(async () => {
 
   input.mockReset().mockImplementation(({ default: d }: { default?: string }) => Promise.resolve(d ?? ''))
   listReleases.mockReset().mockResolvedValue([])
+  tagExists.mockReset().mockResolvedValue(false)
   createDraftRelease.mockReset().mockResolvedValue(draft)
   uploadReleaseAsset.mockReset().mockResolvedValue(asset('fawe.jar'))
   publishRelease.mockReset().mockResolvedValue({ ...draft, draft: false, html_url: 'https://github.com/o/r/x' })
@@ -81,7 +83,7 @@ describe('publish', () => {
 
     input.mockClear()
     await publish('fawe', '2.0.1', jar, {}, config)
-    expect(input).toHaveBeenCalledTimes(1) // only the title
+    expect(input).toHaveBeenCalledTimes(2) // the display name and the title
     expect(listReleases).toHaveBeenLastCalledWith('o/r', { includeDrafts: true })
   })
 
@@ -95,6 +97,31 @@ describe('publish', () => {
     input.mockResolvedValueOnce('2.0.1')
     await publish('fawe', '2.0.0', jar, {}, config)
     expect(createDraftRelease).toHaveBeenCalledWith('o/r', 'fawe/2.0.1', 'fawe v2.0.1')
+  })
+
+  it('asks for another version when a tag without a release exists', async () => {
+    tagExists.mockImplementation((_repo: string, tag: string) => Promise.resolve(tag === 'fawe/2.0.0'))
+    input.mockResolvedValueOnce('2.0.1')
+    await publish('fawe', '2.0.0', jar, {}, config)
+    expect(tagExists).toHaveBeenCalledWith('o/r', 'fawe/2.0.0')
+    expect(logs.join('\n')).toContain('fawe/2.0.0 already exists in o/r as a tag with no release')
+    expect(createDraftRelease).toHaveBeenCalledWith('o/r', 'fawe/2.0.1', 'fawe v2.0.1')
+  })
+
+  it('asks for the display name of a new prefix and titles the release with it', async () => {
+    input.mockImplementation(({ message, default: d }: { message: string; default?: string }) =>
+      Promise.resolve(message.startsWith('Display name') ? 'FastAsyncWorldEdit' : (d ?? '')),
+    )
+    await publish('fawe', '2.0.0', jar, {}, config)
+    expect(input).toHaveBeenCalledWith(expect.objectContaining({ default: 'fawe' }))
+    expect(createDraftRelease).toHaveBeenCalledWith('o/r', 'fawe/2.0.0', 'FastAsyncWorldEdit v2.0.0')
+  })
+
+  it('takes the display name from the previous release without asking', async () => {
+    listReleases.mockResolvedValue([{ ...release('fawe/1.0.0', '2025-01-01T00:00:00Z'), name: 'FAWE v1.0.0' }])
+    await publish('fawe', '2.0.0', jar, {}, config)
+    expect(input).toHaveBeenCalledTimes(1)
+    expect(createDraftRelease).toHaveBeenCalledWith('o/r', 'fawe/2.0.0', 'FAWE v2.0.0')
   })
 
   it.each([
@@ -118,6 +145,15 @@ describe('publish', () => {
     await expect(publish('fawe', '2.0.0', jar, {}, config)).rejects.toThrow('boom')
     expect(deleteRelease).toHaveBeenCalledWith('o/r', 42)
     expect(publishRelease).not.toHaveBeenCalled()
+  })
+
+  it('warns that the draft remains when deleting it fails, and rethrows the original error', async () => {
+    uploadReleaseAsset.mockRejectedValue(new Error('boom'))
+    deleteRelease.mockRejectedValue(new Error('gone wrong'))
+    await expect(publish('fawe', '2.0.0', jar, {}, config)).rejects.toThrow('boom')
+    expect(logs.join('\n')).toContain(
+      'The draft release 42 of fawe/2.0.0 remains in o/r because deleting it failed: gone wrong. Delete it on GitHub before publishing fawe/2.0.0 again',
+    )
   })
 
   it('deletes the draft when publishing fails', async () => {

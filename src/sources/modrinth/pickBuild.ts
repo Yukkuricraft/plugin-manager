@@ -10,9 +10,15 @@ type Version = components['schemas']['Version']
 
 /**
  * The listed builds of a project for `gameVersion` that run on `loader`, newest first. Of the builds sharing a version
- * number, such as one jar per platform, only the one tagged with the fewest loaders is kept.
+ * number, such as one jar per platform, only one is kept: the build `currentVersionId` names, else the one tagged
+ * with the fewest loaders.
  */
-export async function listBuilds(projectId: string, loader: Loader, gameVersion: string): Promise<Version[]> {
+export async function listBuilds(
+  projectId: string,
+  loader: Loader,
+  gameVersion: string,
+  currentVersionId?: string,
+): Promise<Version[]> {
   const res = await client.GET('/project/{id|slug}/version', {
     params: { path: { 'id|slug': projectId }, query: { game_versions: JSON.stringify([gameVersion]) } },
   })
@@ -20,7 +26,9 @@ export async function listBuilds(projectId: string, loader: Loader, gameVersion:
   const listed = res.data.filter((v) => v.status !== 'unlisted')
   const newestFirst = loaderCandidates(listed, loader).sort((a, b) => b.date_published.localeCompare(a.date_published))
   const byNumber = Map.groupBy(newestFirst, (v) => v.version_number)
-  return [...byNumber.values()].map((group) => mostLoaderSpecific(group)[0])
+  return [...byNumber.values()].map(
+    (group) => group.find((v) => v.id === currentVersionId) ?? mostLoaderSpecific(group)[0],
+  )
 }
 
 /**

@@ -34,6 +34,8 @@ export interface EmbeddedDependencyInfo {
 export interface RequiredDependencyInfo extends DependencyInfoBase {
   type: 'required'
   dependencies: DependencyInfo[]
+  /** The build the dependency pins, when `DependencyContext.lockOverPins` kept the locked build instead */
+  overriddenPin?: { versionId: string; version: string }
 }
 
 /**
@@ -68,12 +70,17 @@ export type DependencyInfo =
 
 /**
  * What dependency resolution needs beyond the loader and Minecraft version: the substitute rules from plugins.json,
- * and the lockfile entries to reuse instead of resolving again. Only add passes `locked`, because update re-resolves
- * every dependency on purpose.
+ * and the lockfile entries to reuse instead of resolving again. Updating every Modrinth plugin passes no `locked`,
+ * because it re-resolves every dependency on purpose.
  */
 export interface DependencyContext {
   substitutes?: Record<string, SubstituteRule>
   locked?: AllModrinthPlugins
+  /**
+   * Project IDs whose locked entry is used even when a dependency pins another build of it. Without this, a pin
+   * skips the lockfile.
+   */
+  lockOverPins?: ReadonlySet<string>
 }
 
 /** Looks up a Modrinth project by slug or ID, for its ID and current slug */
@@ -130,8 +137,17 @@ export async function getDependencyInfo(
 
     // A pinned dependency skips the lockfile and is fetched, so addRequiredDependencies can still compare
     // the pinned build against any locked one
-    const locked = versionId ? undefined : ctx.locked?.[projectId]
+    const locked = versionId && !ctx.lockOverPins?.has(projectId) ? undefined : ctx.locked?.[projectId]
     if (locked) {
+      let overriddenPin: RequiredDependencyInfo['overriddenPin']
+      if (versionId && versionId !== locked.versionId) {
+        const pinnedRes = await client.GET('/project/{id|slug}/version/{id|number}', {
+          params: { path: { 'id|slug': projectId, 'id|number': versionId } },
+        })
+        // The version number only makes the warning about the pin readable, so the ID stands in if it can't be had
+        const version = pinnedRes.data?.version_number ?? pinnedRes.data?.name ?? versionId
+        overriddenPin = { versionId, version }
+      }
       return {
         type: 'required',
         projectSlug: locked.slug ?? undefined,
@@ -145,6 +161,7 @@ export async function getDependencyInfo(
         publishedAt: locked.publishedAt,
         // Its own dependencies were locked along with it
         dependencies: [],
+        overriddenPin,
       }
     }
   }

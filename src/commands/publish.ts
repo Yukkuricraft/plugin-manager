@@ -11,6 +11,7 @@ import {
   listReleases,
   parseRepo,
   publishRelease,
+  tagExists,
   uploadReleaseAsset,
 } from '../utils/github.js'
 import { output } from '../utils/output.js'
@@ -88,11 +89,12 @@ async function requireJar(jar: string): Promise<void> {
   }
 }
 
-// The newest release under the prefix names the plugin: its title up to " v<digit>", else its first word
-function defaultTitle(id: string, version: string, previousTitle: string | null | undefined): string {
+// The plugin's display name, from the newest release under the prefix: its title up to " v<digit>", else its first
+// word. With no titled release under the prefix, the user gives it
+async function displayName(id: string, previousTitle: string | null | undefined): Promise<string> {
   const title = previousTitle?.trim()
-  const display = title ? (title.match(/^(.*?) v\d/)?.[1] ?? title.split(/\s+/)[0]) : id
-  return `${display} v${version}`
+  if (title) return title.match(/^(.*?) v\d/)?.[1] ?? title.split(/\s+/)[0]
+  return (await prompts.input({ message: `Display name of ${id}, for release titles:`, default: id })).trim() || id
 }
 
 /**
@@ -121,8 +123,15 @@ export default async function publish(
   const all = await listReleases(repo, { includeDrafts: true })
   const taken = new Set(all.map((release) => release.tag_name))
 
-  while (taken.has(`${id}/${version}`)) {
-    output.warning(`${id}/${version} already exists in ${repo}`)
+  for (;;) {
+    const tag = `${id}/${version}`
+    if (taken.has(tag)) {
+      output.warning(`${tag} already exists in ${repo}`)
+    } else if (await tagExists(repo, tag)) {
+      output.warning(`${tag} already exists in ${repo} as a tag with no release`)
+    } else {
+      break
+    }
     version = await prompts.input({
       message: 'Use a different version:',
       validate: (value) => (!value || /\s/.test(value) ? 'Must be non-empty and contain no whitespace' : true),
@@ -134,10 +143,8 @@ export default async function publish(
     all.filter((release) => !release.draft),
     id,
   )[0]
-  const title = await prompts.input({
-    message: 'Release title:',
-    default: defaultTitle(id, version, previous?.name),
-  })
+  const display = await displayName(id, previous?.name)
+  const title = await prompts.input({ message: 'Release title:', default: `${display} v${version}` })
 
   const tag = `${id}/${version}`
   const draft = await createDraftRelease(repo, tag, title)
@@ -146,7 +153,12 @@ export default async function publish(
     await uploadReleaseAsset(draft, jar)
     published = await publishRelease(repo, draft.id)
   } catch (e) {
-    await deleteRelease(repo, draft.id).catch(() => undefined)
+    await deleteRelease(repo, draft.id).catch((deleteError: unknown) => {
+      const reason = deleteError instanceof Error ? deleteError.message : String(deleteError)
+      output.warning(
+        `The draft release ${draft.id} of ${tag} remains in ${repo} because deleting it failed: ${reason}. Delete it on GitHub before publishing ${tag} again`,
+      )
+    })
     throw e
   }
 

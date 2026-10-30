@@ -49,6 +49,12 @@ describe('url update', () => {
     expect(next.all.url.vault).toEqual(vault)
   })
 
+  it('rejects an id that names an Object prototype property', async () => {
+    await expect(update(plugins({ grief }), plugins(), ['toString'])).rejects.toThrow(
+      new UserError('No url plugin toString in plugins.json'),
+    )
+  })
+
   it("rejects an id that isn't a url plugin", async () => {
     await expect(update(plugins({ grief }), plugins(), ['nope'])).rejects.toThrow(
       new UserError('No url plugin nope in plugins.json'),

@@ -89,7 +89,8 @@ match the Modrinth version number. Without it, the latest matching version is re
 yarn run-cli add fastasyncworldedit@2.15.1
 ```
 
-To move a pinned plugin to another version, run `update modrinth <plugin>`.
+To move a pinned plugin to another version, run `update modrinth <plugin>`. `update modrinth` with no plugins named
+drops pins: it moves every plugin to its latest version for the Minecraft version.
 
 ### Overriding the loader or Minecraft version
 
@@ -240,9 +241,10 @@ yarn run-cli publish griefdefender 3.1.11 ./GriefDefender.jar
 ```
 
 It tags the release `griefdefender/3.1.11`, asks for a release title, and uploads the JAR. The title defaults to the
-previous release's, with the new version. It refuses a tag that already exists and asks for a different version. The
-release is created as a draft and published once the upload succeeds; if the upload or publish fails, the draft is
-deleted.
+previous release's, with the new version. For a plugin's first release it asks for a display name, defaulting to the id,
+and the title defaults to `<display name> v<version>`. It refuses a tag that already exists, with or without a release,
+and asks for a different version. The release is created as a draft and published once the upload succeeds; if the
+upload or publish fails, the draft is deleted. If deleting it fails too, `publish` names the draft to delete on GitHub.
 
 `publish` asks for the repo the first time and saves it in `publish.json` in the current directory. Pass
 `--repo <owner>/<name>` to use another one.
@@ -265,7 +267,7 @@ Options:
 ```
 
 Both use `GITHUB_TOKEN`, as set up in "Private GitHub releases". The server running `add`, `update gh-release` and
-`install` needs a token with read access to the release repo's contents. `publish` needs write access to its contents.
+`install` needs a fine-grained token with `Contents: read` on the release repo. `publish` needs `Contents: write`.
 
 ### Updating
 
@@ -327,18 +329,26 @@ yarn run-cli update modrinth luckperms
 For each plugin, you pick from its builds for that Minecraft version, across release, beta and alpha channels, newest
 first. Each row shows the version number, channel and date, and the pinned build is marked `(current)`. The newest
 release is selected, or the newest build when there's no release. Builds sharing a version number, such as one JAR per
-platform, are listed once.
+platform, are listed once, as the pinned build if it's one of them.
 
 Only plugins you added can be named. A plugin that exists only as a dependency is updated by naming the plugin that
 needs it.
 
-Updating a plugin re-resolves the dependencies only it uses, and reports what happened to each dependency:
+Updating a plugin re-resolves the dependencies only it uses, prints the new build's dependencies with any warnings about
+them, and reports what happened to each dependency:
 
 ```
 Updating x because only a uses it
 Not updating x because plugins other than a use it (b)
+Adding w because a needs it
 Removing y because only a used it
 Not updating z because it was added to plugins.json itself
+```
+
+A dependency other plugins use keeps its build even when the new build pins another one:
+
+```
+a pins x 1.1.0, but x stays at 1.0.0 because plugins other than a use it (b)
 ```
 
 ### Featured versions only

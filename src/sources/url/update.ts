@@ -34,7 +34,7 @@ export default async function update(
 ): Promise<UpdateResult> {
   const result: UpdateResult = { changelog: '', removed: [], added: [], changed: [], overrides: [] }
 
-  const unknown = ids.find((id) => !(id in existingPlugins.all.url))
+  const unknown = ids.find((id) => !Object.hasOwn(existingPlugins.all.url, id))
   if (unknown !== undefined) throw new UserError(`No url plugin ${unknown} in plugins.json`)
 
   // Carried over before anything is pinned, so a new file's name is checked against every other url entry

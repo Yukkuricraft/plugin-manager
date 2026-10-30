@@ -102,4 +102,8 @@ describe('gh-release update', () => {
   it('rejects an unknown id', async () => {
     await expect(update(plugins(), ['zzz'])).rejects.toThrow('No gh-release plugin zzz in plugins.json')
   })
+
+  it('rejects an id that names an Object prototype property', async () => {
+    await expect(update(plugins(), ['toString'])).rejects.toThrow('No gh-release plugin toString in plugins.json')
+  })
 })

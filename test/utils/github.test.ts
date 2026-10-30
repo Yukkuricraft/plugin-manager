@@ -8,6 +8,7 @@ import {
   listReleases,
   parseRepo,
   publishRelease,
+  tagExists,
   uploadReleaseAsset,
   type GitHubRelease,
 } from '../../src/utils/github.js'
@@ -111,8 +112,39 @@ describe('listReleases', () => {
     const error = await listReleases('o/r').catch((e: unknown) => e)
 
     expect(error).toBeInstanceOf(UserError)
-    expect((error as Error).message).toContain('GITHUB_TOKEN')
+    expect((error as Error).message).toBe(
+      'Listing releases of o/r needs GITHUB_TOKEN set to a token with Contents: read on o/r',
+    )
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('tagExists', () => {
+  it('finds a tag, keeping the slashes in its name as path separators', async () => {
+    fetchMock.mockResolvedValueOnce(json({ ref: 'refs/tags/fawe/2.0.0' }))
+
+    expect(await tagExists('o/r', 'fawe/2.0.0')).toBe(true)
+    expect(sent(0).url).toBe('https://api.github.com/repos/o/r/git/ref/tags/fawe/2.0.0')
+  })
+
+  it('encodes each segment of the tag', async () => {
+    fetchMock.mockResolvedValueOnce(json({}))
+
+    await tagExists('o/r', 'a b/c#d')
+
+    expect(sent(0).url).toBe('https://api.github.com/repos/o/r/git/ref/tags/a%20b/c%23d')
+  })
+
+  it('reports a missing tag', async () => {
+    fetchMock.mockResolvedValueOnce(json({ message: 'Not Found' }, 404))
+
+    expect(await tagExists('o/r', 'fawe/2.0.0')).toBe(false)
+  })
+
+  it('throws on any other error status', async () => {
+    fetchMock.mockResolvedValueOnce(json({ message: 'Server Error' }, 500))
+
+    await expect(tagExists('o/r', 'fawe/2.0.0')).rejects.toThrow(RequestError)
   })
 })
 
@@ -152,7 +184,9 @@ describe('writing', () => {
   it('asks for write access when the token is unset', async () => {
     vi.stubEnv('GITHUB_TOKEN', '')
 
-    await expect(deleteRelease('o/r', 9)).rejects.toThrow(/GITHUB_TOKEN.*write o\/r/)
+    await expect(deleteRelease('o/r', 9)).rejects.toThrow(
+      'Deleting release 9 of o/r needs GITHUB_TOKEN set to a token with Contents: write on o/r',
+    )
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

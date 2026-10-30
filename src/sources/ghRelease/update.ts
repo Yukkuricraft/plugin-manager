@@ -15,7 +15,7 @@ export default async function update(next: Plugins, ids: string[]): Promise<Upda
   const result: UpdateResult = { changelog: '', removed: [], added: [], changed: [], overrides: [] }
   const entries = next.all['gh-release']
 
-  const unknown = ids.find((id) => !(id in entries))
+  const unknown = ids.find((id) => !Object.hasOwn(entries, id))
   if (unknown !== undefined) throw new UserError(`No gh-release plugin ${unknown} in plugins.json`)
 
   const targets = ids.length > 0 ? [...new Set(ids)] : Object.keys(entries).sort()
