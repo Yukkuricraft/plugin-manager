@@ -8,6 +8,7 @@ import removePlugins from './commands/removePlugins.js'
 import searchPlugins from './commands/searchPlugins.js'
 import showPlugins from './commands/showPlugins.js'
 import substitutePlugins from './commands/substitutePlugins.js'
+import updateGhRelease from './commands/updateGhRelease.js'
 import updateModrinth from './commands/updateModrinth.js'
 import updateUrl from './commands/updateUrl.js'
 import viewPlugins from './commands/viewPlugins.js'
@@ -227,6 +228,18 @@ await yargs()
               array: true,
             }),
           async (argv) => updateUrl(await resolvePluginsPath(argv), argv.plugin ?? []),
+        )
+        .command(
+          'gh-release [plugin..]',
+          'Update gh-release plugins to a release from the release repo',
+          (yargs) =>
+            yargs.positional('plugin', {
+              type: 'string',
+              describe:
+                'gh-release plugins to update. All of those behind their newest release are asked about if none are given',
+              array: true,
+            }),
+          async (argv) => updateGhRelease(await resolvePluginsPath(argv), argv.plugin ?? []),
         )
         .demandCommand(1, 'Specify which source to update'),
     () => undefined,
