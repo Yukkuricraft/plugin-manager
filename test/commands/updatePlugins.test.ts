@@ -28,7 +28,7 @@ function existingPlugins(): Plugins {
     version: 2,
     config: { loader: 'paper', gameVersion: '1.21.1' },
     added: {},
-    all: { modrinth: {}, url: {} },
+    all: { modrinth: {}, url: {}, 'gh-release': {} },
   }
 }
 

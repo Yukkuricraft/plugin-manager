@@ -29,7 +29,7 @@ export default async function initPlugins(pluginsPath: string, flags: { loader?:
     version: 2,
     config: { loader, gameVersion },
     added: {},
-    all: { modrinth: {}, url: {} },
+    all: { modrinth: {}, url: {}, 'gh-release': {} },
   }
   await writePlugins(plugins, pluginsPath)
   output.success(`Created ${pluginsPath} for ${loader} ${gameVersion}`)

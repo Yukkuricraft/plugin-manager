@@ -24,7 +24,7 @@ function sha512(contents: string) {
 const vault = urlEntry({ url: 'https://files.example/Vault.jar', filename: 'Vault.jar', sha512: sha512('vault') })
 
 function plugins(url: AllPlugins['url']): AllPlugins {
-  return { modrinth: {}, url }
+  return { modrinth: {}, url, 'gh-release': {} }
 }
 
 let dir: string

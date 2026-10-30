@@ -23,7 +23,7 @@ function plugins(fields: Partial<Plugins> = {}): Plugins {
     version: 2,
     config: { loader: 'paper', gameVersion: '1.21.4' },
     added: {},
-    all: { modrinth: {}, url: {} },
+    all: { modrinth: {}, url: {}, 'gh-release': {} },
     ...fields,
   }
 }
@@ -45,7 +45,7 @@ describe('substitutePlugins --remove', () => {
       substituteSlug: 'FastAsyncWorldEdit',
       substituteSource: 'url',
     })
-    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() } } })
+    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() }, 'gh-release': {} } })
     loadPlugins.mockResolvedValue(p)
     removeSubstitute.mockReturnValue(rule)
 
@@ -60,7 +60,9 @@ describe('substitutePlugins --remove', () => {
       substituteSlug: 'fastasyncworldedit',
       substituteSource: 'modrinth',
     })
-    const p = plugins({ all: { modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) }, url: {} } })
+    const p = plugins({
+      all: { modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) }, url: {}, 'gh-release': {} },
+    })
     loadPlugins.mockResolvedValue(p)
     removeSubstitute.mockReturnValue(rule)
 
@@ -86,7 +88,9 @@ describe('substitutePlugins --remove', () => {
 
   it('does not print the note for a url rule whose substitute id matches an unrelated modrinth entry', async () => {
     const rule = substituteRule({ substitute: 'fawe', substituteSlug: 'fastasyncworldedit', substituteSource: 'url' })
-    const p = plugins({ all: { modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) }, url: {} } })
+    const p = plugins({
+      all: { modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) }, url: {}, 'gh-release': {} },
+    })
     loadPlugins.mockResolvedValue(p)
     removeSubstitute.mockReturnValue(rule)
 

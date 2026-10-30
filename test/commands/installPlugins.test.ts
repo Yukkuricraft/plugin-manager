@@ -37,7 +37,7 @@ function plugins(modrinth: Plugins['all']['modrinth'] = {}): Plugins {
       substitutes: { we: substituteRule() },
     },
     added: {},
-    all: { modrinth, url: {} },
+    all: { modrinth, url: {}, 'gh-release': {} },
   }
 }
 

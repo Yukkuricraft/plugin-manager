@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { UserError } from '../src/errors.js'
 import { loadPlugins, type Plugins, pluginsExist, writePlugins } from '../src/pluginList.js'
-import { modrinthEntry, substituteRule, urlEntry } from './testFixtures.js'
+import { ghReleaseEntry, modrinthEntry, substituteRule, urlEntry } from './testFixtures.js'
 
 let dir: string
 let file: string
@@ -33,6 +33,7 @@ const v2: Plugins = {
       }),
     },
     url: {},
+    'gh-release': {},
   },
 }
 
@@ -72,6 +73,45 @@ describe('loadPlugins', () => {
     )
     await expect(loadPlugins(file)).rejects.toThrow(UserError)
     await expect(loadPlugins(file)).rejects.toThrow("plugins.json doesn't match the expected format")
+  })
+
+  it('loads a file without a gh-release section as having none', async () => {
+    await fs.writeFile(
+      file,
+      JSON.stringify({
+        version: 2,
+        config: { loader: 'paper', gameVersion: '1.21.1' },
+        added: {},
+        all: { modrinth: {}, url: {} },
+      }),
+    )
+    expect((await loadPlugins(file)).all['gh-release']).toEqual({})
+  })
+
+  it('round-trips a gh-release entry and its added key', async () => {
+    const withRelease: Plugins = {
+      ...v2,
+      config: { ...v2.config, releaseRepo: 'owner/artifacts' },
+      added: { ...v2.added, 'gh-release:grief': '3.1.11' },
+      all: {
+        ...v2.all,
+        'gh-release': { grief: ghReleaseEntry({ tag: 'grief/3.1.11', version: '3.1.11' }) },
+      },
+    }
+    await writePlugins(withRelease, file)
+    expect(await loadPlugins(file)).toEqual(withRelease)
+  })
+
+  it('accepts gh-release as a substitute source', async () => {
+    const withRule: Plugins = {
+      ...v2,
+      config: {
+        ...v2.config,
+        substitutes: { '1u6JkXh5': substituteRule({ substitute: 'grief', substituteSource: 'gh-release' }) },
+      },
+    }
+    await writePlugins(withRule, file)
+    expect((await loadPlugins(file)).config.substitutes?.['1u6JkXh5'].substituteSource).toBe('gh-release')
   })
 
   it('round-trips a version 2 file, including overrides and dependedOnBy', async () => {

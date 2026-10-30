@@ -8,17 +8,20 @@ import { UserError } from './errors.js'
 export const pluginsFileVersion = 2
 export const defaultPluginsPath = './plugins.json'
 
+export type PluginSourceName = 'modrinth' | 'url' | 'gh-release'
+const pluginSourceNames = ['modrinth', 'url', 'gh-release'] as const satisfies readonly PluginSourceName[]
+
 /**
  * A declaration that one plugin satisfies every required dependency on another, such as FastAsyncWorldEdit standing
  * in for WorldEdit. Stored in config.substitutes, keyed by the Modrinth project ID of the project being replaced.
- * substituteSource says where the replacement comes from: a Modrinth project ID, or the key of an entry in all.url.
+ * substituteSource says where the replacement comes from: a Modrinth project ID, or the key of an entry in all.url or all.gh-release.
  * The slugs keep plugins.json readable and let messages name both plugins without a request.
  */
 export const substituteRule = z.object({
   slug: z.string(),
   substitute: z.string(),
   substituteSlug: z.string(),
-  substituteSource: z.enum(['modrinth', 'url']).default('modrinth'),
+  substituteSource: z.enum(pluginSourceNames).default('modrinth'),
 })
 export type SubstituteRule = z.infer<typeof substituteRule>
 
@@ -27,6 +30,8 @@ export const serverConfig = z.object({
   loader: z.enum(allLoaders),
   gameVersion: z.string(),
   substitutes: z.record(z.string(), substituteRule).optional(),
+  /** The GitHub repository, as `owner/name`, whose releases gh-release plugins are pinned from */
+  releaseRepo: z.string().optional(),
 })
 export type ServerConfig = z.infer<typeof serverConfig>
 
@@ -85,19 +90,41 @@ export type UrlPlugin = z.infer<typeof urlPlugin>
 export const allUrlPlugins = z.record(z.string(), urlPlugin)
 export type AllUrlPlugins = z.infer<typeof allUrlPlugins>
 
-export const plugin = z.discriminatedUnion('source', [modrinthPlugin, urlPlugin])
+/**
+ * A plugin pinned from an asset of a GitHub release. tag is the release's tag and publishedAt is when that release was
+ * published. url is the asset's API URL, and sha512 and size pin the file downloaded from it.
+ * pinnedAt records when the current file was pinned, by add or update.
+ */
+export const ghReleasePlugin = z.object({
+  source: z.literal('gh-release'),
+  tag: z.string(),
+  publishedAt: z.string(),
+  url: z.string(),
+  version: z.string(),
+  filename: z.string(),
+  sha512: z.string(),
+  size: z.number(),
+  pinnedAt: z.string(),
+})
+export type GhReleasePlugin = z.infer<typeof ghReleasePlugin>
+
+export const allGhReleasePlugins = z.record(z.string(), ghReleasePlugin)
+export type AllGhReleasePlugins = z.infer<typeof allGhReleasePlugins>
+
+export const plugin = z.discriminatedUnion('source', [modrinthPlugin, urlPlugin, ghReleasePlugin])
 export type Plugin = z.infer<typeof plugin>
 
 export const allPlugins = z.object({
   modrinth: allModrinthPlugins,
   url: allUrlPlugins,
+  'gh-release': allGhReleasePlugins.default({}),
 })
 export type AllPlugins = z.infer<typeof allPlugins>
 
 export const plugins = z.object({
   version: z.literal(pluginsFileVersion),
   config: serverConfig,
-  added: z.record(z.templateLiteral([z.enum(['modrinth', 'url']), ':', z.string()]), z.string()),
+  added: z.record(z.templateLiteral([z.enum(pluginSourceNames), ':', z.string()]), z.string()),
   all: allPlugins,
 })
 export type Plugins = z.infer<typeof plugins>

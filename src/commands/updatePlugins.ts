@@ -26,6 +26,7 @@ export default async function updatePlugins(pluginsPath: string, flags: { gameVe
     all: {
       modrinth: {},
       url: {},
+      'gh-release': {},
     },
   }
 

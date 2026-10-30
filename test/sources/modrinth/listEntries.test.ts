@@ -18,6 +18,7 @@ const plugins: Plugins = {
       cb: modrinthEntry({ slug: 'craftbook' }),
     },
     url: {},
+    'gh-release': {},
   },
 }
 
@@ -73,6 +74,7 @@ describe('listEntries', () => {
       all: {
         modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) },
         url: {},
+        'gh-release': {},
       },
     }
 

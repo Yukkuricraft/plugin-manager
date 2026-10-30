@@ -17,7 +17,7 @@ function plugins(all: Partial<Plugins['all']> = {}): Plugins {
     version: 2,
     config: { loader: 'paper', gameVersion: '1.21.4' },
     added: {},
-    all: { modrinth: {}, url: {}, ...all },
+    all: { modrinth: {}, url: {}, 'gh-release': {}, ...all },
   }
 }
 

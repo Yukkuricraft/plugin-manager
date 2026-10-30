@@ -21,7 +21,7 @@ function plugins(url: Plugins['all']['url'] = {}): Plugins {
     version: 2,
     config: { loader: 'paper', gameVersion: '1.21.4' },
     added: Object.fromEntries(Object.entries(url).map(([id, entry]) => [`url:${id}`, entry.version])),
-    all: { modrinth: {}, url },
+    all: { modrinth: {}, url, 'gh-release': {} },
   }
 }
 

@@ -37,6 +37,7 @@ function plugins(): Plugins {
         other: modrinthEntry({ slug: 'other' }),
       },
       url: {},
+      'gh-release': {},
     },
   }
 }

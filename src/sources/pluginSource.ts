@@ -1,4 +1,4 @@
-import { type AllPlugins, type Plugin as BasePlugin, Plugins } from '../pluginList.js'
+import { type AllPlugins, type Plugin as BasePlugin, type PluginSourceName, Plugins } from '../pluginList.js'
 import { type ResolutionFlags } from '../resolution.js'
 import { type Loader } from './modrinth/loaders.js'
 import modrinthSource from './modrinth/modrinthSource.js'
@@ -28,7 +28,7 @@ export interface OverrideChange {
 }
 
 export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
-  readonly prefix: 'modrinth' | 'url'
+  readonly prefix: PluginSourceName
 
   search(query: string, loader: Loader, gameVersion?: string): Promise<void>
   findPlugin(query: string, plugins: AllPlugins): Promise<{ plugin: Plugin; id: string } | null>

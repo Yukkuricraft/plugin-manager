@@ -80,7 +80,7 @@ function withRule(modrinth: Plugins['all']['modrinth'] = {}, added: Plugins['add
       substitutes: { we: substituteRule() },
     },
     added,
-    all: { modrinth, url: {} },
+    all: { modrinth, url: {}, 'gh-release': {} },
   }
 }
 

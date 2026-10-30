@@ -34,7 +34,7 @@ function plugins(fields: Partial<Plugins> = {}): Plugins {
     version: 2,
     config: { loader: 'paper', gameVersion: '1.21.4' },
     added: {},
-    all: { modrinth: {}, url: {} },
+    all: { modrinth: {}, url: {}, 'gh-release': {} },
     ...fields,
   }
 }
@@ -111,7 +111,7 @@ describe('declareSubstitute', () => {
   it('refuses when the replaced project is added', async () => {
     const p = plugins({
       added: { 'modrinth:worldedit': '7.4.5' },
-      all: { modrinth: { we: modrinthEntry({ slug: 'worldedit' }) }, url: {} },
+      all: { modrinth: { we: modrinthEntry({ slug: 'worldedit' }) }, url: {}, 'gh-release': {} },
     })
 
     await expect(declareSubstitute(p, 'worldedit', 'fastasyncworldedit')).rejects.toThrow(
@@ -128,6 +128,7 @@ describe('declareSubstitute', () => {
           cb: modrinthEntry({ slug: 'craftbook' }),
         },
         url: {},
+        'gh-release': {},
       },
     })
 
@@ -138,7 +139,7 @@ describe('declareSubstitute', () => {
   })
 
   it('records a url plugin as the substitute', async () => {
-    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() } } })
+    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() }, 'gh-release': {} } })
 
     const rule = await declareSubstitute(p, 'worldedit', 'url:FastAsyncWorldEdit')
 
@@ -152,7 +153,7 @@ describe('declareSubstitute', () => {
   })
 
   it('looks up the replaced project but not the url plugin', async () => {
-    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() } } })
+    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() }, 'gh-release': {} } })
 
     await declareSubstitute(p, 'worldedit', 'url:FastAsyncWorldEdit')
 
@@ -228,7 +229,7 @@ describe('assertNoSubstitutedPluginsLocked', () => {
       version: 2,
       config: { loader: 'paper', gameVersion: '1.21.4', substitutes: worldeditToFawe },
       added,
-      all: { modrinth, url: {} },
+      all: { modrinth, url: {}, 'gh-release': {} },
     }
   }
 

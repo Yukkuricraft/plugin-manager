@@ -26,7 +26,7 @@ describe('showPlugins', () => {
         substitutes: { we: substituteRule({ substituteSource: 'modrinth' }) },
       },
       added: {},
-      all: { modrinth: {}, url: {} },
+      all: { modrinth: {}, url: {}, 'gh-release': {} },
     }
     loadPlugins.mockResolvedValue(plugins)
 
@@ -53,7 +53,7 @@ describe('showPlugins', () => {
         },
       },
       added: {},
-      all: { modrinth: {}, url: {} },
+      all: { modrinth: {}, url: {}, 'gh-release': {} },
     }
     loadPlugins.mockResolvedValue(plugins)
 
@@ -69,7 +69,7 @@ describe('showPlugins', () => {
       version: 2,
       config: { loader: 'paper', gameVersion: '1.21.4' },
       added: {},
-      all: { modrinth: {}, url: {} },
+      all: { modrinth: {}, url: {}, 'gh-release': {} },
     }
     loadPlugins.mockResolvedValue(plugins)
 
