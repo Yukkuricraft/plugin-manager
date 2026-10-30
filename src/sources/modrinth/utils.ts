@@ -365,6 +365,8 @@ export async function getPluginVersion(
     displayFor?: string
     name?: string
     targetVersion?: string
+    /** A Modrinth version ID to use, taking precedence over targetVersion */
+    targetVersionId?: string
     gameVersion?: string
     featured?: boolean
     fromDate?: undefined
@@ -382,6 +384,7 @@ export async function getPluginVersion(
     displayFor?: string
     name?: string
     targetVersion?: string
+    targetVersionId?: string
     gameVersion?: string
     featured?: boolean
     fromDate: string
@@ -400,6 +403,7 @@ export async function getPluginVersion(
     displayFor?: string
     name?: string
     targetVersion?: string
+    targetVersionId?: string
     gameVersion?: string
     featured?: boolean
     fromDate?: string
@@ -411,7 +415,17 @@ export async function getPluginVersion(
   dependencies: DependencyInfo[]
   changelog?: [string, string][]
 }> {
-  const { targetVersion, gameVersion, featured, fromDate, changelog, displayFor, name, dependencyContext } = opts ?? {}
+  const {
+    targetVersion,
+    targetVersionId,
+    gameVersion,
+    featured,
+    fromDate,
+    changelog,
+    displayFor,
+    name,
+    dependencyContext,
+  } = opts ?? {}
   // Dependencies pass name rather than displayFor, since displayFor also triggers the "Getting
   // dependencies of" log below, which would otherwise print once per dependency
   const projectName = name ?? displayFor ?? projectId
@@ -434,7 +448,12 @@ export async function getPluginVersion(
   const supportingGameVersion = gameVersion ? ` supporting Minecraft ${gameVersion}` : ''
 
   let projectVersion: components['schemas']['Version'] | undefined
-  if (targetVersion) {
+  if (targetVersionId) {
+    projectVersion = projectVersions.find((v) => v.id === targetVersionId)
+    if (!projectVersion) {
+      throw new UserError(`Version ${targetVersionId} not found for plugin ${projectName}${supportingGameVersion}`)
+    }
+  } else if (targetVersion) {
     const matchingVersion = projectVersions.filter((v) => v.version_number === targetVersion)
     if (matchingVersion.length === 0) {
       throw new UserError(`Version ${targetVersion} not found for plugin ${projectName}${supportingGameVersion}`)

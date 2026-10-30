@@ -4,6 +4,7 @@ import { type PluginOverrides, type Plugins } from '../../pluginList.js'
 import { clearGameVersionOverride, grantGameVersionOverride, resolveTarget } from '../../resolution.js'
 import { output } from '../../utils/output.js'
 import type { OverrideChange, UpdateResult, UpdateTarget } from '../pluginSource.js'
+import { diffModrinth } from './diff.js'
 import { newestSupportedGameVersion } from './gameVersions.js'
 import { addRequiredDependencies, carryOverPlugins, formatDependencyInfo, getPluginVersion } from './utils.js'
 import { MissingDataError, NoCompatibleVersionError, UserError } from '../../errors.js'
@@ -146,9 +147,6 @@ export default async function update(
       c.newVersion.dependencies.map((dep) => ({ dep, dependant: c.newVersion.projectVersion.project_id })),
     ),
   )
-  // Whatever remains at this point is in the new plugin set for one of three reasons: it was updated
-  // directly, it was kept at its current build, or it was pulled in as a dependency of one of those.
-  const newProjectIds = Object.keys(newPlugins.all.modrinth)
 
   for (const c of changes) {
     if (c.newVersion.dependencies.length > 0) {
@@ -159,22 +157,6 @@ export default async function update(
     }
   }
 
-  const removedPlugins = Object.entries(existingPlugins.all.modrinth).filter(([id]) => !newProjectIds.includes(id))
-  const addedPlugins = newProjectIds
-    .filter((p) => existingPlugins.all.modrinth[p] === undefined)
-    .map((p) => newPlugins.all.modrinth[p].slug ?? p)
-  const changedVersions = Object.entries(existingPlugins.all.modrinth)
-    .filter(([id]) => newProjectIds.includes(id))
-    .map(([id, oldPlugin]) => {
-      const newPlugin = newPlugins.all.modrinth[id]
-      return {
-        identifier: oldPlugin.slug ?? id,
-        oldVersion: oldPlugin.version,
-        newVersion: newPlugin?.version ?? newPlugin?.filename ?? '',
-      }
-    })
-    .filter((p) => p.oldVersion !== p.newVersion)
-
   const changelog = changes
     .map(
       (c) =>
@@ -184,9 +166,7 @@ export default async function update(
 
   return {
     changelog,
-    removed: removedPlugins.map(([id, p]) => p.slug ?? id),
-    added: addedPlugins,
-    changed: changedVersions,
+    ...diffModrinth(existingPlugins.all.modrinth, newPlugins.all.modrinth),
     overrides: overrideChanges,
   }
 }

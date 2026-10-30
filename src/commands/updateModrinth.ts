@@ -1,7 +1,8 @@
-import { SanityCheckError, UserError } from '../errors.js'
+import { UserError } from '../errors.js'
 import { loadPlugins, type Plugins } from '../pluginList.js'
 import { chooseGameVersion } from '../sources/modrinth/gameVersions.js'
 import update from '../sources/modrinth/update.js'
+import { updateNamed } from '../sources/modrinth/updateNamed.js'
 import { confirmAndWrite } from './updateCommon.js'
 
 export default async function updateModrinth(
@@ -13,10 +14,16 @@ export default async function updateModrinth(
     if (flags.gameVersion !== undefined || flags.featured !== undefined) {
       throw new UserError('--game-version and --featured only apply when no plugins are named')
     }
-    throw new SanityCheckError('Updating named Modrinth plugins is not implemented yet')
   }
 
   const existing = await loadPlugins(pluginsPath)
+  if (ids.length > 0) {
+    const next: Plugins = { ...existing, added: { ...existing.added }, all: { ...existing.all } }
+    const result = await updateNamed(next, ids)
+    await confirmAndWrite(pluginsPath, next, result, { writeChangelog: true })
+    return
+  }
+
   const currentGameVersion = existing.config.gameVersion
   const gameVersion = await chooseGameVersion(
     flags.gameVersion,

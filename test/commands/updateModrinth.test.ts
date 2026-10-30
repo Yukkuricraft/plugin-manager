@@ -5,17 +5,19 @@ import { type Plugins } from '../../src/pluginList.js'
 import updateModrinth from '../../src/commands/updateModrinth.js'
 import { ghReleaseEntry, urlEntry } from '../testFixtures.js'
 
-const { loadPlugins, chooseGameVersion, confirmAndWrite, modrinthUpdate } = vi.hoisted(() => ({
+const { loadPlugins, chooseGameVersion, confirmAndWrite, modrinthUpdate, updateNamed } = vi.hoisted(() => ({
   loadPlugins: vi.fn(),
   chooseGameVersion: vi.fn(),
   confirmAndWrite: vi.fn(),
   modrinthUpdate: vi.fn(),
+  updateNamed: vi.fn(),
 }))
 
 vi.mock('../../src/pluginList.js', () => ({ loadPlugins }))
 vi.mock('../../src/sources/modrinth/gameVersions.js', () => ({ chooseGameVersion }))
 vi.mock('../../src/commands/updateCommon.js', () => ({ confirmAndWrite }))
 vi.mock('../../src/sources/modrinth/update.js', () => ({ default: modrinthUpdate }))
+vi.mock('../../src/sources/modrinth/updateNamed.js', () => ({ updateNamed }))
 
 const noChanges = { changelog: '', removed: [], added: [], changed: [], overrides: [] }
 const url = urlEntry()
@@ -35,6 +37,7 @@ beforeEach(() => {
   chooseGameVersion.mockReset().mockResolvedValue('1.21.4')
   confirmAndWrite.mockReset()
   modrinthUpdate.mockReset().mockResolvedValue(noChanges)
+  updateNamed.mockReset().mockResolvedValue(noChanges)
 })
 
 describe('updateModrinth', () => {
@@ -60,5 +63,15 @@ describe('updateModrinth', () => {
 
   it('rejects --featured with ids', async () => {
     await expect(updateModrinth('./plugins.json', ['worldedit'], { featured: true })).rejects.toBeInstanceOf(UserError)
+  })
+
+  it('updates named plugins without retargeting, writing the changelog', async () => {
+    await updateModrinth('./plugins.json', ['worldedit'], {})
+
+    const [next, ids] = updateNamed.mock.calls[0] as [Plugins, string[]]
+    expect(ids).toEqual(['worldedit'])
+    expect(next.config.gameVersion).toBe('1.21.1')
+    expect(chooseGameVersion).not.toHaveBeenCalled()
+    expect(confirmAndWrite).toHaveBeenCalledWith('./plugins.json', next, noChanges, { writeChangelog: true })
   })
 })
