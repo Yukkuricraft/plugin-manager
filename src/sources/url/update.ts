@@ -63,7 +63,7 @@ export default async function update(existingPlugins: Plugins, newPlugins: Plugi
       })
     ).trim()
 
-    const pin = await pinUrl(newPlugins, id, url)
+    const pin = await pinUrl(newPlugins, { source: 'url', id }, url)
     newPlugins.all.url[id] = { source: 'url', url, version, ...pin, pinnedAt: new Date().toISOString() }
     newPlugins.added[`url:${id}`] = version
 

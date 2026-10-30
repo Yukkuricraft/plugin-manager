@@ -22,22 +22,30 @@ export function parseUrlQuery(query: string): { id: string; version: string; url
   return { id, version, url }
 }
 
-/** Names the plugin, other than url entry `id`, that's saved as `filename`, in the form remove takes */
-function filenameOwner(plugins: Plugins, filename: string, id: string): string | undefined {
+type PinSelf = { source: 'url' | 'gh-release'; id: string }
+
+/** Names the plugin, other than `self`, that's saved as `filename`, in the form remove takes */
+function filenameOwner(plugins: Plugins, filename: string, self: PinSelf): string | undefined {
   const modrinth = Object.entries(plugins.all.modrinth).find(([, entry]) => entry.filename === filename)
   if (modrinth) return `modrinth:${modrinth[1].slug ?? modrinth[0]}`
 
-  const url = Object.entries(plugins.all.url).find(([otherId, entry]) => otherId !== id && entry.filename === filename)
-  return url ? `url:${url[0]}` : undefined
+  for (const source of ['url', 'gh-release'] as const) {
+    const pinned: Record<string, { filename: string }> = plugins.all[source]
+    const match = Object.entries(pinned).find(
+      ([id, entry]) => !(source === self.source && id === self.id) && entry.filename === filename,
+    )
+    if (match) return `${source}:${match[0]}`
+  }
+  return undefined
 }
 
 /**
- * Downloads `url` and returns what url entry `id` pins about it. Refuses a filename another plugin in `plugins`
+ * Downloads `url` and returns what the `self` entry pins about it. Refuses a filename another plugin in `plugins`
  * already uses, since both would be saved to the plugins folder under the same name.
  */
-export async function pinUrl(plugins: Plugins, id: string, url: string): Promise<DownloadPin> {
-  const pin = await inspectDownload(url, hostHeaders, id)
-  const owner = filenameOwner(plugins, pin.filename, id)
+export async function pinUrl(plugins: Plugins, self: PinSelf, url: string): Promise<DownloadPin> {
+  const pin = await inspectDownload(url, hostHeaders, self.id)
+  const owner = filenameOwner(plugins, pin.filename, self)
   if (owner) throw new UserError(`${url} would be saved as ${pin.filename}, which ${owner} already uses`)
   return pin
 }

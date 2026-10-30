@@ -46,7 +46,7 @@ const urlSource = {
       return false
     }
 
-    const pin = await pinUrl(plugins, id, url)
+    const pin = await pinUrl(plugins, { source: 'url', id }, url)
     plugins.added[`url:${id}`] = version
     plugins.all.url[id] = { source: 'url', url, version, ...pin, pinnedAt: new Date().toISOString() }
     output.info(

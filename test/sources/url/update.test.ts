@@ -63,7 +63,7 @@ describe('url update', () => {
 
     const result = await update(plugins({ grief, vault }), next)
 
-    expect(pinUrl).toHaveBeenCalledWith(next, 'grief', 'https://files.example/grief-3.2.0.jar')
+    expect(pinUrl).toHaveBeenCalledWith(next, { source: 'url', id: 'grief' }, 'https://files.example/grief-3.2.0.jar')
     expect(next.all.url.grief).toEqual({
       source: 'url',
       url: 'https://files.example/grief-3.2.0.jar',
