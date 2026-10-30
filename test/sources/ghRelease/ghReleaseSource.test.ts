@@ -123,19 +123,4 @@ describe('ghReleaseSource', () => {
     expect(entries.find((e) => e.name === 'fawe')?.substitutes).toBe('worldedit')
     expect(entries.find((e) => e.name === 'Vault')?.substitutes).toBeUndefined()
   })
-
-  it('update carries gh-release entries over unchanged', async () => {
-    const entry = ghReleaseEntry()
-    const existing = plugins({
-      added: { 'gh-release:vault': '1.0.0' },
-      all: { modrinth: {}, url: {}, 'gh-release': { vault: entry } },
-    })
-    const next = plugins()
-
-    const result = await ghReleaseSource.update(existing, next)
-
-    expect(next.all['gh-release']).toEqual({ vault: entry })
-    expect(next.added).toEqual({ 'gh-release:vault': '1.0.0' })
-    expect(result).toEqual({ changelog: '', removed: [], added: [], changed: [], overrides: [] })
-  })
 })

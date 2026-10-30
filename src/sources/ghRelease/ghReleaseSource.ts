@@ -56,15 +56,6 @@ const ghReleaseSource = {
     )
     return true
   },
-  // Only carries entries over; the per-source update arrives separately
-  async update(existingPlugins: Plugins, newPlugins: Plugins) {
-    for (const [id, plugin] of Object.entries(existingPlugins.all['gh-release'])) {
-      newPlugins.all['gh-release'][id] = plugin
-      const key = `gh-release:${id}` as const
-      if (key in existingPlugins.added) newPlugins.added[key] = existingPlugins.added[key]
-    }
-    return { changelog: '', removed: [], added: [], changed: [], overrides: [] }
-  },
   install(plugins: AllPlugins, dir: string): Promise<void> {
     return installPinned(plugins['gh-release'], dir, (id) => `publish a new release and run update gh-release ${id}`)
   },

@@ -8,7 +8,8 @@ import removePlugins from './commands/removePlugins.js'
 import searchPlugins from './commands/searchPlugins.js'
 import showPlugins from './commands/showPlugins.js'
 import substitutePlugins from './commands/substitutePlugins.js'
-import updatePlugins from './commands/updatePlugins.js'
+import updateModrinth from './commands/updateModrinth.js'
+import updateUrl from './commands/updateUrl.js'
 import viewPlugins from './commands/viewPlugins.js'
 import { resolvePluginsPath } from './environments.js'
 import { MissingDataError, RequestError, UserError, ValidationError } from './errors.js'
@@ -188,20 +189,47 @@ await yargs()
   )
   .command(
     'update',
-    'Update plugins',
+    'Update the plugins of one source',
     (yargs) =>
       yargs
-        .option('game-version', {
-          type: 'string',
-          alias: 'mc-version',
-          describe: updateGameVersionDescription,
-        })
-        .option('featured', {
-          type: 'boolean',
-          describe: featuredDescription,
-        }),
-    async (argv) =>
-      updatePlugins(await resolvePluginsPath(argv), { gameVersion: argv.gameVersion, featured: argv.featured }),
+        .command(
+          'modrinth [plugin..]',
+          'Update Modrinth plugins, or all of them for a new Minecraft version',
+          (yargs) =>
+            yargs
+              .positional('plugin', {
+                type: 'string',
+                describe: 'Modrinth plugins to update. All of them are updated if none are given',
+                array: true,
+              })
+              .option('game-version', {
+                type: 'string',
+                alias: 'mc-version',
+                describe: updateGameVersionDescription,
+              })
+              .option('featured', {
+                type: 'boolean',
+                describe: featuredDescription,
+              }),
+          async (argv) =>
+            updateModrinth(await resolvePluginsPath(argv), argv.plugin ?? [], {
+              gameVersion: argv.gameVersion,
+              featured: argv.featured,
+            }),
+        )
+        .command(
+          'url [plugin..]',
+          'Update URL plugins to a new file',
+          (yargs) =>
+            yargs.positional('plugin', {
+              type: 'string',
+              describe: 'URL plugins that have a new file. Asked for if none are given',
+              array: true,
+            }),
+          async (argv) => updateUrl(await resolvePluginsPath(argv), argv.plugin ?? []),
+        )
+        .demandCommand(1, 'Specify which source to update'),
+    () => undefined,
   )
   .completion()
   .help()

@@ -7,7 +7,6 @@ import install from './install.js'
 import listEntries from './listEntries.js'
 import removePlugin from './removePlugin.js'
 import search from './search.js'
-import update from './update.js'
 import viewPlugins from './viewPlugins.js'
 
 const modrinthSource: PluginSource<ModrinthPlugin> = {
@@ -35,7 +34,6 @@ const modrinthSource: PluginSource<ModrinthPlugin> = {
   viewPlugins,
   listEntries,
   addPlugin,
-  update,
   install,
   removePlugin,
 }

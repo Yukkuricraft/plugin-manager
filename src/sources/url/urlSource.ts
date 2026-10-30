@@ -6,7 +6,6 @@ import { substitutedSlugs } from '../../substitute.js'
 import { UserError } from '../../errors.js'
 import install from './install.js'
 import { parseUrlQuery, pinUrl } from './pin.js'
-import update from './update.js'
 import UrlPluginEntry from './urlPluginEntry.js'
 
 // `satisfies` (rather than a `: PluginSource<UrlPlugin>` annotation) keeps `listEntries`'s inferred
@@ -46,7 +45,6 @@ const urlSource = {
     )
     return true
   },
-  update,
   install,
   removePlugin(plugins: Plugins, allToRemove: { plugin: Plugin; id: string }[]) {
     for (const { id } of allToRemove) {

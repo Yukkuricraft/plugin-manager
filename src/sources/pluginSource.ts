@@ -28,6 +28,15 @@ export interface OverrideChange {
   gameVersion: string
 }
 
+/** What an update run changed, for the summary and the changelog */
+export interface UpdateResult {
+  changelog: string
+  removed: string[]
+  added: string[]
+  changed: { identifier: string; oldVersion: string; newVersion: string }[]
+  overrides: OverrideChange[]
+}
+
 export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   readonly prefix: PluginSourceName
 
@@ -39,17 +48,6 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   removePlugin(plugins: Plugins, allToRemove: { plugin: BasePlugin; id: string }[]): void
   /** Downloads this source's plugins into `dir`, which exists and belongs to this source alone */
   install(plugins: AllPlugins, dir: string): Promise<void>
-  update(
-    existingPlugins: Plugins,
-    newPlugins: Plugins,
-    target: UpdateTarget,
-  ): Promise<{
-    changelog: string
-    removed: string[]
-    added: string[]
-    changed: { identifier: string; oldVersion: string; newVersion: string }[]
-    overrides: OverrideChange[]
-  }>
   /** Resolves to whether `plugins` was changed */
   addPlugin(plugins: Plugins, pluginIndicator: string, flags: AddFlags): Promise<boolean>
 }

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Plugins } from '../../../src/pluginList.js'
 import { urlEntry } from '../../testFixtures.js'
+import { UserError } from '../../../src/errors.js'
 import update from '../../../src/sources/url/update.js'
 
 const { checkbox, input, pinUrl } = vi.hoisted(() => ({ checkbox: vi.fn(), input: vi.fn(), pinUrl: vi.fn() }))
@@ -36,8 +37,26 @@ afterEach(() => {
 })
 
 describe('url update', () => {
+  it('asks nothing for the checkbox when ids are given', async () => {
+    input.mockResolvedValueOnce('https://files.example/grief-3.2.0.jar').mockResolvedValueOnce('3.2.0')
+    pinUrl.mockResolvedValue({ filename: 'griefdefender-3.2.0.jar', sha512: 'bbbbbbbb-new', size: 5 })
+    const next = plugins()
+
+    const result = await update(plugins({ grief, vault }), next, ['grief'])
+
+    expect(checkbox).not.toHaveBeenCalled()
+    expect(result.changed.map((c) => c.identifier)).toEqual(['url:grief'])
+    expect(next.all.url.vault).toEqual(vault)
+  })
+
+  it("rejects an id that isn't a url plugin", async () => {
+    await expect(update(plugins({ grief }), plugins(), ['nope'])).rejects.toThrow(
+      new UserError('No url plugin nope in plugins.json'),
+    )
+  })
+
   it('asks nothing when there are no url plugins', async () => {
-    const result = await update(plugins(), plugins())
+    const result = await update(plugins(), plugins(), [])
 
     expect(checkbox).not.toHaveBeenCalled()
     expect(result.changed).toEqual([])
@@ -47,7 +66,7 @@ describe('url update', () => {
     checkbox.mockResolvedValue([])
     const next = plugins()
 
-    const result = await update(plugins({ grief, vault }), next)
+    const result = await update(plugins({ grief, vault }), next, [])
 
     expect(next.all.url).toEqual({ grief, vault })
     expect(next.added).toEqual({ 'url:grief': '3.1.1', 'url:vault': '1.7.3' })
@@ -61,7 +80,7 @@ describe('url update', () => {
     pinUrl.mockResolvedValue(pin)
     const next = plugins()
 
-    const result = await update(plugins({ grief, vault }), next)
+    const result = await update(plugins({ grief, vault }), next, [])
 
     expect(pinUrl).toHaveBeenCalledWith(next, { source: 'url', id: 'grief' }, 'https://files.example/grief-3.2.0.jar')
     expect(next.all.url.grief).toEqual({
@@ -81,7 +100,7 @@ describe('url update', () => {
     input.mockResolvedValueOnce('https://files.example/grief-rebuilt.jar').mockResolvedValueOnce('3.1.1')
     pinUrl.mockResolvedValue({ filename: 'griefdefender-3.1.1.jar', sha512: 'bbbbbbbb-new', size: 5 })
 
-    const result = await update(plugins({ grief }), plugins())
+    const result = await update(plugins({ grief }), plugins(), [])
 
     expect(result.changed).toEqual([
       { identifier: 'url:grief', oldVersion: '3.1.1 (aaaaaaaa)', newVersion: '3.1.1 (bbbbbbbb)' },
@@ -93,7 +112,7 @@ describe('url update', () => {
     input.mockResolvedValueOnce('https://files.example/grief-3.2.0.jar').mockResolvedValueOnce('3.2.0')
     pinUrl.mockResolvedValue({ filename: 'griefdefender-3.2.0.jar', sha512: 'bbbbbbbb-new', size: 5 })
 
-    await update(plugins({ grief }), plugins())
+    await update(plugins({ grief }), plugins(), [])
 
     const { validate } = input.mock.calls[0][0] as { validate: (value: string) => true | string }
     expect(validate(grief.url)).not.toBe(true)

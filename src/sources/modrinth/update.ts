@@ -3,7 +3,7 @@ import * as prompts from '@inquirer/prompts'
 import { type PluginOverrides, type Plugins } from '../../pluginList.js'
 import { clearGameVersionOverride, grantGameVersionOverride, resolveTarget } from '../../resolution.js'
 import { output } from '../../utils/output.js'
-import type { OverrideChange, UpdateTarget } from '../pluginSource.js'
+import type { OverrideChange, UpdateResult, UpdateTarget } from '../pluginSource.js'
 import { newestSupportedGameVersion } from './gameVersions.js'
 import { addRequiredDependencies, carryOverPlugins, formatDependencyInfo, getPluginVersion } from './utils.js'
 import { MissingDataError, NoCompatibleVersionError, UserError } from '../../errors.js'
@@ -12,13 +12,7 @@ export default async function update(
   existingPlugins: Plugins,
   newPlugins: Plugins,
   target: UpdateTarget,
-): Promise<{
-  changelog: string
-  removed: string[]
-  added: string[]
-  changed: { identifier: string; oldVersion: string; newVersion: string }[]
-  overrides: OverrideChange[]
-}> {
+): Promise<UpdateResult> {
   // Resolve every plugin against a copy of the configuration already moved to the target version, rather
   // than passing the target as a --game-version flag, so the target counts as the configured Minecraft
   // version and no plugin records an override just for being updated to it.
