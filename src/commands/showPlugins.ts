@@ -13,7 +13,7 @@ export default async function showPlugins(pluginsPath: string, verbose: boolean)
   console.log(`${output.label('Lockfile')} ${output.highlight(pluginsPath)}`)
   console.log(`${output.label('Server')} ${output.highlight(`${loader} ${gameVersion}`)}`)
   for (const rule of Object.values(pluginsObj.config.substitutes ?? {})) {
-    const source = rule.substituteSource === 'url' ? output.dim(' (url)') : ''
+    const source = rule.substituteSource === 'modrinth' ? '' : output.dim(` (${rule.substituteSource})`)
     console.log(`${output.label('Substitute')} ${output.highlight(`${rule.slug} → ${rule.substituteSlug}`)}${source}`)
   }
   output.blank()

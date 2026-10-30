@@ -64,6 +64,33 @@ describe('showPlugins', () => {
     expect(printed).toContain('(url)')
   })
 
+  it('marks a substitution by a gh-release plugin', async () => {
+    const plugins: Plugins = {
+      version: 2,
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          we: {
+            slug: 'worldedit',
+            substitute: 'fawe',
+            substituteSlug: 'fawe',
+            substituteSource: 'gh-release',
+          },
+        },
+      },
+      added: {},
+      all: { modrinth: {}, url: {}, 'gh-release': {} },
+    }
+    loadPlugins.mockResolvedValue(plugins)
+
+    await showPlugins('./plugins.json', false)
+
+    const printed = vi.mocked(console.log).mock.calls.flat().join('\n')
+    expect(printed).toContain('worldedit → fawe')
+    expect(printed).toContain('(gh-release)')
+  })
+
   it('names the lockfile it read, above the server line', async () => {
     const plugins: Plugins = {
       version: 2,

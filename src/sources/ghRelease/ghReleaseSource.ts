@@ -4,6 +4,7 @@ import { UserError, ValidationError } from '../../errors.js'
 import { AllPlugins, GhReleasePlugin, Plugin, Plugins } from '../../pluginList.js'
 import { listReleases } from '../../utils/github.js'
 import { formatSize, output } from '../../utils/output.js'
+import { substitutedSlugs } from '../../substitute.js'
 import { installPinned } from '../url/install.js'
 import GhReleasePluginEntry from './ghReleasePluginEntry.js'
 import { pickAsset, pickRelease } from './pick.js'
@@ -27,16 +28,10 @@ const ghReleaseSource = {
     }
   },
   listEntries(plugins: Plugins): GhReleasePluginEntry[] {
-    // Keyed by a gh-release substitute's plugin ID, holding the slugs of the projects it replaces
-    const replacedSlugsById = new Map<string, string[]>()
-    for (const rule of Object.values(plugins.config.substitutes ?? {})) {
-      if (rule.substituteSource !== 'gh-release') continue
-      replacedSlugsById.set(rule.substitute, [...(replacedSlugsById.get(rule.substitute) ?? []), rule.slug])
-    }
-    return Object.entries(plugins.all['gh-release']).map(([id, plugin]) => {
-      const replaced = replacedSlugsById.get(id)
-      return new GhReleasePluginEntry(id, plugin, replaced && [...replaced].sort().join(', '))
-    })
+    const replaced = substitutedSlugs(plugins, 'gh-release')
+    return Object.entries(plugins.all['gh-release']).map(
+      ([id, plugin]) => new GhReleasePluginEntry(id, plugin, replaced.get(id)),
+    )
   },
   async addPlugin(plugins: Plugins, id: string): Promise<boolean> {
     if (id.includes('/') || id.includes('@')) {

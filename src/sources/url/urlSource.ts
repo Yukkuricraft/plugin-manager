@@ -2,6 +2,7 @@
 import type { PluginSource } from '../pluginSource.js'
 import { AllPlugins, Plugin, Plugins, UrlPlugin } from '../../pluginList.js'
 import { formatSize, output } from '../../utils/output.js'
+import { substitutedSlugs } from '../../substitute.js'
 import { UserError } from '../../errors.js'
 import install from './install.js'
 import { parseUrlQuery, pinUrl } from './pin.js'
@@ -25,17 +26,8 @@ const urlSource = {
     }
   },
   listEntries(plugins: Plugins): UrlPluginEntry[] {
-    // Keyed by a url substitute's plugin ID, holding the slugs of the projects it replaces. One plugin can stand
-    // in for several, so the entry names them all, sorted for a stable listing
-    const replacedSlugsById = new Map<string, string[]>()
-    for (const rule of Object.values(plugins.config.substitutes ?? {})) {
-      if (rule.substituteSource !== 'url') continue
-      replacedSlugsById.set(rule.substitute, [...(replacedSlugsById.get(rule.substitute) ?? []), rule.slug])
-    }
-    return Object.entries(plugins.all.url).map(([id, plugin]) => {
-      const replaced = replacedSlugsById.get(id)
-      return new UrlPluginEntry(id, plugin, replaced && [...replaced].sort().join(', '))
-    })
+    const replaced = substitutedSlugs(plugins, 'url')
+    return Object.entries(plugins.all.url).map(([id, plugin]) => new UrlPluginEntry(id, plugin, replaced.get(id)))
   },
   async addPlugin(plugins: Plugins, pluginIndicator: string): Promise<boolean> {
     const { id, version, url } = parseUrlQuery(pluginIndicator)

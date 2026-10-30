@@ -3,21 +3,21 @@ import { getPluginSource } from './sources/pluginSource.js'
 import { findProject } from './sources/modrinth/utils.js'
 import { UserError } from './errors.js'
 
-/** The substitute side of a rule, resolved from a query that may carry a `url:` prefix */
+/** The substitute side of a rule, resolved from a query that may carry a `url:` or `gh-release:` prefix */
 async function findSubstitute(
   plugins: Plugins,
   query: string,
-): Promise<{ id: string; slug: string; source: 'modrinth' | 'url' }> {
+): Promise<{ id: string; slug: string; source: SubstituteRule['substituteSource'] }> {
   const { source, strippedQuery } = getPluginSource(query)
-  if (source.prefix === 'url') {
-    const urlPlugin = plugins.all.url[strippedQuery]
-    if (!urlPlugin) {
+  if (source.prefix === 'url' || source.prefix === 'gh-release') {
+    if (!plugins.all[source.prefix][strippedQuery]) {
+      const syntax = source.prefix === 'url' ? `${strippedQuery}@<version>@<url>` : strippedQuery
       throw new UserError(
-        `No url plugin ${strippedQuery} in plugins.json. Run \`yarn run-cli add url:${strippedQuery}@<version>@<url>\` first`,
+        `No ${source.prefix} plugin ${strippedQuery} in plugins.json. Run \`yarn run-cli add ${source.prefix}:${syntax}\` first`,
       )
     }
-    // A url plugin's key is both its ID and the name it's shown under
-    return { id: strippedQuery, slug: strippedQuery, source: 'url' }
+    // The key of a url or gh-release plugin is both its ID and the name it's shown under
+    return { id: strippedQuery, slug: strippedQuery, source: source.prefix }
   }
 
   const project = await findProject(strippedQuery)
@@ -25,9 +25,9 @@ async function findSubstitute(
 }
 
 /**
- * Records that the project or url plugin `substituteQuery` names satisfies every required dependency on the Modrinth
- * project `pluginQuery` names, and returns the rule. `pluginQuery` is a Modrinth slug or ID; `substituteQuery` is a
- * Modrinth slug or ID, or a `url:`-prefixed url plugin key.
+ * Records that the project, url plugin or gh-release plugin `substituteQuery` names satisfies every required
+ * dependency on the Modrinth project `pluginQuery` names, and returns the rule. `pluginQuery` is a Modrinth slug or ID;
+ * `substituteQuery` is a Modrinth slug or ID, or a `url:` or `gh-release:`-prefixed plugin key.
  *
  * Refuses when either side is already part of a substitution, so rules never chain. Also refuses when the project
  * being replaced is already in the lockfile, since it and its substitute would both be installed.
@@ -44,8 +44,8 @@ export async function declareSubstitute(
   }
 
   // Only Modrinth projects are held to one rule each, which is what stops a rule chaining into another. A url
-  // plugin stands in for as many projects as the user declares, since rules are keyed by Modrinth project ID and
-  // nothing can replace a url plugin in turn.
+  // or gh-release plugin stands in for as many projects as the user declares, since rules are keyed by Modrinth
+  // project ID and nothing can replace such a plugin in turn.
   const rules = plugins.config.substitutes ?? {}
   const parties = [plugin, ...(substitute.source === 'modrinth' ? [substitute] : [])]
   for (const party of parties) {
@@ -102,9 +102,9 @@ export function removeSubstitute(plugins: Plugins, pluginQuery: string): Substit
 
 /**
  * Throws if the lockfile contains a project that a substitute rule replaces, since both it and its substitute would
- * then be installed, or if a rule's url substitute is missing from plugins.json, which would leave every dependency
- * on the replaced project unsatisfied. The commands never produce either state, so this catches a plugins.json edited
- * by hand, or a path the commands missed. install runs it before touching the plugins folder.
+ * then be installed, or if a rule's url or gh-release substitute is missing from plugins.json, which would leave
+ * every dependency on the replaced project unsatisfied. The commands never produce either state, so this catches a
+ * plugins.json edited by hand, or a path the commands missed. install runs it before touching the plugins folder.
  */
 export function assertNoSubstitutedPluginsLocked(plugins: Plugins) {
   const problems = Object.entries(plugins.config.substitutes ?? {}).flatMap(([id, rule]) => {
@@ -126,10 +126,11 @@ export function assertNoSubstitutedPluginsLocked(plugins: Plugins) {
       }
     }
 
-    if (rule.substituteSource === 'url' && !plugins.all.url[rule.substitute]) {
+    if (rule.substituteSource !== 'modrinth' && !plugins.all[rule.substituteSource][rule.substitute]) {
+      const syntax = rule.substituteSource === 'url' ? `${rule.substitute}@<version>@<url>` : rule.substitute
       ruleProblems.push(
-        `${rule.substituteSlug} substitutes for ${rule.slug}, but no url plugin ${rule.substituteSlug} is in plugins.json. ` +
-          `Run \`yarn run-cli add url:${rule.substitute}@<version>@<url>\`, or \`yarn run-cli substitute --remove ${rule.slug}\``,
+        `${rule.substituteSlug} substitutes for ${rule.slug}, but no ${rule.substituteSource} plugin ${rule.substituteSlug} is in plugins.json. ` +
+          `Run \`yarn run-cli add ${rule.substituteSource}:${syntax}\`, or \`yarn run-cli substitute --remove ${rule.slug}\``,
       )
     }
 
@@ -152,4 +153,17 @@ export function assertNotSubstituting(plugins: Plugins, toRemove: { plugin: Plug
     ]
   })
   if (problems.length > 0) throw new UserError(`Refusing to remove:\n${problems.join('\n')}`)
+}
+
+/**
+ * Maps the ID of each `source` plugin that substitutes for a Modrinth project to the slugs it replaces, sorted and
+ * comma-joined since one plugin can stand in for several.
+ */
+export function substitutedSlugs(plugins: Plugins, source: 'url' | 'gh-release'): Map<string, string> {
+  const slugsById = new Map<string, string[]>()
+  for (const rule of Object.values(plugins.config.substitutes ?? {})) {
+    if (rule.substituteSource !== source) continue
+    slugsById.set(rule.substitute, [...(slugsById.get(rule.substitute) ?? []), rule.slug])
+  }
+  return new Map([...slugsById].map(([id, slugs]) => [id, [...slugs].sort().join(', ')]))
 }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Plugins } from '../../src/pluginList.js'
-import { modrinthEntry, substituteRule, urlEntry } from '../testFixtures.js'
+import { ghReleaseEntry, modrinthEntry, substituteRule, urlEntry } from '../testFixtures.js'
 import substitutePlugins from '../../src/commands/substitutePlugins.js'
 
 const { loadPlugins, writePlugins, declareSubstitute, removeSubstitute } = vi.hoisted(() => ({
@@ -39,6 +39,17 @@ function printed() {
 }
 
 describe('substitutePlugins --remove', () => {
+  it('prints the note when the gh-release substitute is still present', async () => {
+    const rule = substituteRule({ substitute: 'fawe', substituteSlug: 'fawe', substituteSource: 'gh-release' })
+    const p = plugins({ all: { modrinth: {}, url: {}, 'gh-release': { fawe: ghReleaseEntry() } } })
+    loadPlugins.mockResolvedValue(p)
+    removeSubstitute.mockReturnValue(rule)
+
+    await substitutePlugins('./plugins.json', 'worldedit', undefined, { remove: true })
+
+    expect(printed()).toContain("keep it until they're next added or updated")
+  })
+
   it('prints the note when the url substitute is still present', async () => {
     const rule = substituteRule({
       substitute: 'FastAsyncWorldEdit',

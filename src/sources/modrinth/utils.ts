@@ -48,11 +48,15 @@ export interface MiscDependencyInfo {
   versionId: string | null
 }
 
-/** A required dependency that a url plugin already in plugins.json stands in for, so nothing is resolved or locked */
+/**
+ * A required dependency that a url or gh-release plugin already in plugins.json stands in for, so nothing is
+ * resolved or locked
+ */
 export interface SubstitutedDependencyInfo {
   type: 'substituted'
   replacedSlug: string
   substituteId: string
+  substituteSource: 'url' | 'gh-release'
 }
 
 export type DependencyInfo =
@@ -113,8 +117,13 @@ export async function getDependencyInfo(
         )
         versionId = null
       }
-      if (rule.substituteSource === 'url') {
-        return { type: 'substituted', replacedSlug: rule.slug, substituteId: rule.substitute }
+      if (rule.substituteSource !== 'modrinth') {
+        return {
+          type: 'substituted',
+          replacedSlug: rule.slug,
+          substituteId: rule.substitute,
+          substituteSource: rule.substituteSource,
+        }
       }
       projectId = rule.substitute
     }
@@ -337,7 +346,7 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
       )
     case 'substituted':
       return chalk.cyanBright(
-        `${symbols.info} ${output.pluginName(info.replacedSlug)} is satisfied by the url plugin ${output.pluginName(info.substituteId)}`,
+        `${symbols.info} ${output.pluginName(info.replacedSlug)} is satisfied by the ${info.substituteSource} plugin ${output.pluginName(info.substituteId)}`,
       )
     case 'required': {
       const indentStr = ' '.repeat(indent + 2)

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { NoCompatibleVersionError } from '../../../src/errors.js'
-import { type AllModrinthPlugins } from '../../../src/pluginList.js'
+import { type AllModrinthPlugins, type Plugins } from '../../../src/pluginList.js'
 import { modrinthEntry, substituteRule } from '../../testFixtures.js'
 import { output } from '../../../src/utils/output.js'
 import {
@@ -9,6 +9,7 @@ import {
   carryOverPlugins,
   type DependencyContext,
   type DependencyInfo,
+  formatDependencyInfo,
   getDependencyInfo,
   getPluginVersion,
 } from '../../../src/sources/modrinth/utils.js'
@@ -290,8 +291,31 @@ describe('getDependencyInfo', () => {
   it('reports a dependency a url plugin substitutes for, without making a request', async () => {
     const info = await getDependencyInfo(required('we'), 'paper', '1.21.4', { substitutes: worldeditToUrlFawe })
 
-    expect(info).toEqual({ type: 'substituted', replacedSlug: 'worldedit', substituteId: 'FastAsyncWorldEdit' })
+    expect(info).toEqual({
+      type: 'substituted',
+      replacedSlug: 'worldedit',
+      substituteId: 'FastAsyncWorldEdit',
+      substituteSource: 'url',
+    })
     expect(get).not.toHaveBeenCalled()
+  })
+
+  it('resolves a dependency on a project substituted by a gh-release plugin as substituted', async () => {
+    const substitutes: DependencyContext['substitutes'] = {
+      we: substituteRule({ substitute: 'fawe', substituteSlug: 'fawe', substituteSource: 'gh-release' }),
+    }
+
+    const info = await getDependencyInfo(required('we'), 'paper', '1.21.4', { substitutes })
+
+    expect(info).toEqual({
+      type: 'substituted',
+      replacedSlug: 'worldedit',
+      substituteId: 'fawe',
+      substituteSource: 'gh-release',
+    })
+    expect(get).not.toHaveBeenCalled()
+    expect(formatDependencyInfo(info, {} as Plugins, 0)).toContain('gh-release plugin')
+    expect(formatDependencyInfo(info, {} as Plugins, 0)).toContain('fawe')
   })
 
   it('drops a version pin on a project a url plugin substitutes for, with a warning', async () => {
@@ -379,7 +403,15 @@ describe('addRequiredDependencies', () => {
     const all: AllModrinthPlugins = {}
 
     addRequiredDependencies(all, [
-      { dep: { type: 'substituted', replacedSlug: 'worldedit', substituteId: 'FastAsyncWorldEdit' }, dependant: 'cb' },
+      {
+        dep: {
+          type: 'substituted',
+          replacedSlug: 'worldedit',
+          substituteId: 'FastAsyncWorldEdit',
+          substituteSource: 'url',
+        },
+        dependant: 'cb',
+      },
     ])
 
     expect(all).toEqual({})

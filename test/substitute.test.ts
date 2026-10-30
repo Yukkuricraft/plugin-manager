@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { UserError } from '../src/errors.js'
 import { type Plugins, type SubstituteRule } from '../src/pluginList.js'
-import { modrinthEntry, substituteRule, urlEntry } from './testFixtures.js'
+import { ghReleaseEntry, modrinthEntry, substituteRule, urlEntry } from './testFixtures.js'
 import {
   assertNoSubstitutedPluginsLocked,
   assertNotSubstituting,
   declareSubstitute,
   removeSubstitute,
+  substitutedSlugs,
 } from '../src/substitute.js'
 
 const { get } = vi.hoisted(() => ({ get: vi.fn() }))
@@ -150,6 +151,22 @@ describe('declareSubstitute', () => {
       substituteSource: 'url',
     })
     expect(p.config.substitutes).toEqual({ we: rule })
+  })
+
+  it('declares a gh-release plugin as a substitute', async () => {
+    const p = plugins({ all: { modrinth: {}, url: {}, 'gh-release': { fawe: ghReleaseEntry() } } })
+
+    const rule = await declareSubstitute(p, 'worldedit', 'gh-release:fawe')
+
+    expect(rule).toMatchObject({ substitute: 'fawe', substituteSlug: 'fawe', substituteSource: 'gh-release' })
+    expect(p.config.substitutes?.we).toEqual(rule)
+  })
+
+  it('refuses a gh-release plugin that is not in plugins.json', async () => {
+    const p = plugins()
+
+    await expect(declareSubstitute(p, 'worldedit', 'gh-release:fawe')).rejects.toThrow(UserError)
+    await expect(declareSubstitute(p, 'worldedit', 'gh-release:fawe')).rejects.toThrow('add gh-release:fawe')
   })
 
   it('looks up the replaced project but not the url plugin', async () => {
@@ -297,6 +314,26 @@ describe('assertNoSubstitutedPluginsLocked', () => {
 
     expect(() => assertNoSubstitutedPluginsLocked(plugins)).not.toThrow()
   })
+
+  it('refuses to install when a gh-release substitute is missing', () => {
+    const plugins = withLocked({})
+    plugins.config.substitutes = {
+      we: substituteRule({ substitute: 'fawe', substituteSlug: 'fawe', substituteSource: 'gh-release' }),
+    }
+
+    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow(UserError)
+    expect(() => assertNoSubstitutedPluginsLocked(plugins)).toThrow('yarn run-cli add gh-release:fawe')
+  })
+
+  it('passes when a rule points at a gh-release plugin that is present', () => {
+    const plugins = withLocked({})
+    plugins.config.substitutes = {
+      we: substituteRule({ substitute: 'fawe', substituteSlug: 'fawe', substituteSource: 'gh-release' }),
+    }
+    plugins.all['gh-release'] = { fawe: ghReleaseEntry() }
+
+    expect(() => assertNoSubstitutedPluginsLocked(plugins)).not.toThrow()
+  })
 })
 
 describe('assertNotSubstituting', () => {
@@ -333,5 +370,27 @@ describe('assertNotSubstituting', () => {
     const toRemove = [{ plugin: urlEntry(), id: 'fawe' }]
 
     expect(() => assertNotSubstituting(p, toRemove)).not.toThrow()
+  })
+})
+
+describe('substitutedSlugs', () => {
+  it('joins the sorted slugs each substitute of the given source replaces', () => {
+    const p: Plugins = {
+      version: 2,
+      config: {
+        loader: 'paper',
+        gameVersion: '1.21.4',
+        substitutes: {
+          a: substituteRule({ slug: 'zeta', substitute: 'x', substituteSource: 'gh-release' }),
+          b: substituteRule({ slug: 'alpha', substitute: 'x', substituteSource: 'gh-release' }),
+          c: substituteRule({ slug: 'other', substitute: 'y', substituteSource: 'url' }),
+        },
+      },
+      added: {},
+      all: { modrinth: {}, url: {}, 'gh-release': {} },
+    }
+
+    expect(substitutedSlugs(p, 'gh-release')).toEqual(new Map([['x', 'alpha, zeta']]))
+    expect(substitutedSlugs(p, 'url')).toEqual(new Map([['y', 'other']]))
   })
 })

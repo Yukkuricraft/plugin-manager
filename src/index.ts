@@ -170,7 +170,8 @@ await yargs()
         })
         .positional('substitute', {
           type: 'string',
-          describe: 'The plugin to use in its place: a Modrinth slug or id, or url: and the id of an added url plugin',
+          describe:
+            'The plugin to use in its place: a Modrinth slug or id, or url: or gh-release: and the id of an added plugin of that source',
         })
         .option('remove', {
           type: 'boolean',
