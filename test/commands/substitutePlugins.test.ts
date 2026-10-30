@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type Plugins } from '../../src/pluginList.js'
-import { modrinthEntry, substituteRule, urlEntry } from '../testFixtures.js'
+import { ghReleaseEntry, modrinthEntry, substituteRule, urlEntry } from '../testFixtures.js'
 import substitutePlugins from '../../src/commands/substitutePlugins.js'
 
 const { loadPlugins, writePlugins, declareSubstitute, removeSubstitute } = vi.hoisted(() => ({
@@ -23,7 +23,7 @@ function plugins(fields: Partial<Plugins> = {}): Plugins {
     version: 2,
     config: { loader: 'paper', gameVersion: '1.21.4' },
     added: {},
-    all: { modrinth: {}, url: {} },
+    all: { modrinth: {}, url: {}, 'gh-release': {} },
     ...fields,
   }
 }
@@ -39,13 +39,24 @@ function printed() {
 }
 
 describe('substitutePlugins --remove', () => {
+  it('prints the note when the gh-release substitute is still present', async () => {
+    const rule = substituteRule({ substitute: 'fawe', substituteSlug: 'fawe', substituteSource: 'gh-release' })
+    const p = plugins({ all: { modrinth: {}, url: {}, 'gh-release': { fawe: ghReleaseEntry() } } })
+    loadPlugins.mockResolvedValue(p)
+    removeSubstitute.mockReturnValue(rule)
+
+    await substitutePlugins('./plugins.json', 'worldedit', undefined, { remove: true })
+
+    expect(printed()).toContain("keep it until they're next added or updated")
+  })
+
   it('prints the note when the url substitute is still present', async () => {
     const rule = substituteRule({
       substitute: 'FastAsyncWorldEdit',
       substituteSlug: 'FastAsyncWorldEdit',
       substituteSource: 'url',
     })
-    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() } } })
+    const p = plugins({ all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() }, 'gh-release': {} } })
     loadPlugins.mockResolvedValue(p)
     removeSubstitute.mockReturnValue(rule)
 
@@ -60,7 +71,9 @@ describe('substitutePlugins --remove', () => {
       substituteSlug: 'fastasyncworldedit',
       substituteSource: 'modrinth',
     })
-    const p = plugins({ all: { modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) }, url: {} } })
+    const p = plugins({
+      all: { modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) }, url: {}, 'gh-release': {} },
+    })
     loadPlugins.mockResolvedValue(p)
     removeSubstitute.mockReturnValue(rule)
 
@@ -86,7 +99,9 @@ describe('substitutePlugins --remove', () => {
 
   it('does not print the note for a url rule whose substitute id matches an unrelated modrinth entry', async () => {
     const rule = substituteRule({ substitute: 'fawe', substituteSlug: 'fastasyncworldedit', substituteSource: 'url' })
-    const p = plugins({ all: { modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) }, url: {} } })
+    const p = plugins({
+      all: { modrinth: { fawe: modrinthEntry({ slug: 'fastasyncworldedit' }) }, url: {}, 'gh-release': {} },
+    })
     loadPlugins.mockResolvedValue(p)
     removeSubstitute.mockReturnValue(rule)
 

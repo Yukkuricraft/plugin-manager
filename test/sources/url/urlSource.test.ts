@@ -18,7 +18,7 @@ function plugins(fields: Partial<Plugins> = {}): Plugins {
     version: 2,
     config: { loader: 'paper', gameVersion: '1.21.4' },
     added: {},
-    all: { modrinth: {}, url: {} },
+    all: { modrinth: {}, url: {}, 'gh-release': {} },
     ...fields,
   }
 }
@@ -53,7 +53,7 @@ describe('urlSource.addPlugin', () => {
   it('does nothing when the plugin is already added with the same URL and version', async () => {
     const locked = plugins({
       added: { 'url:vault': '1.7.3' },
-      all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.3' }) } },
+      all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.3' }) }, 'gh-release': {} },
     })
 
     await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`)).resolves.toBe(false)
@@ -63,7 +63,7 @@ describe('urlSource.addPlugin', () => {
   it('pins again when the version differs', async () => {
     const locked = plugins({
       added: { 'url:vault': '1.7.2' },
-      all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.2' }) } },
+      all: { modrinth: {}, url: { vault: urlEntry({ url, version: '1.7.2' }) }, 'gh-release': {} },
     })
 
     await expect(urlSource.addPlugin(locked, `vault@1.7.3@${url}`)).resolves.toBe(true)
@@ -87,7 +87,7 @@ describe('urlSource.listEntries', () => {
           },
         },
       },
-      all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry(), Vault: urlEntry() } },
+      all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry(), Vault: urlEntry() }, 'gh-release': {} },
     })
 
     const entries = urlSource.listEntries(p)
@@ -110,7 +110,7 @@ describe('urlSource.listEntries', () => {
           },
         },
       },
-      all: { modrinth: {}, url: { fawe: urlEntry() } },
+      all: { modrinth: {}, url: { fawe: urlEntry() }, 'gh-release': {} },
     })
 
     expect(urlSource.listEntries(p)[0].substitutes).toBeUndefined()
@@ -136,7 +136,7 @@ describe('urlSource.listEntries', () => {
           },
         },
       },
-      all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() } },
+      all: { modrinth: {}, url: { FastAsyncWorldEdit: urlEntry() }, 'gh-release': {} },
     })
 
     expect(urlSource.listEntries(p)[0].substitutes).toBe('fastasyncworldedit, worldedit')

@@ -1,11 +1,10 @@
 import * as prompts from '@inquirer/prompts'
 
+import { UserError } from '../../errors.js'
 import { type Plugins } from '../../pluginList.js'
 import { validateUrl } from '../../utils/files.js'
-import type { PluginSource } from '../pluginSource.js'
+import type { UpdateResult } from '../pluginSource.js'
 import { pinUrl } from './pin.js'
-
-type UpdateResult = Awaited<ReturnType<PluginSource['update']>>
 
 /** Formats a version for the changed-plugins summary, adding a hash prefix when two versions would look identical */
 function versionLabel(version: string, sha512: string, withHash: boolean) {
@@ -24,33 +23,42 @@ function checkNewUrl(value: string, currentUrl: string): true | string {
 }
 
 /**
- * Carries every url entry into `newPlugins`, then asks which ones have a new file, and pins each of those again from
- * a URL and version the user gives. There's nothing to check a URL against for updates, so the rest are kept as they
- * are.
+ * Carries every url entry into `newPlugins`, then pins again each one that has a new file, from a URL and version the
+ * user gives. With no `ids` the user ticks which entries those are; otherwise they're `ids`. There's nothing to check
+ * a URL against for updates, so the rest are kept as they are.
  */
-export default async function update(existingPlugins: Plugins, newPlugins: Plugins): Promise<UpdateResult> {
+export default async function update(
+  existingPlugins: Plugins,
+  newPlugins: Plugins,
+  ids: string[],
+): Promise<UpdateResult> {
   const result: UpdateResult = { changelog: '', removed: [], added: [], changed: [], overrides: [] }
 
-  // Carried over before anything is pinned, so a new file's name is checked against every other url entry. Modrinth
-  // entries are in newPlugins already, since update runs the Modrinth source first
+  const unknown = ids.find((id) => !Object.hasOwn(existingPlugins.all.url, id))
+  if (unknown !== undefined) throw new UserError(`No url plugin ${unknown} in plugins.json`)
+
+  // Carried over before anything is pinned, so a new file's name is checked against every other url entry
   for (const [id, plugin] of Object.entries(existingPlugins.all.url)) {
     newPlugins.all.url[id] = plugin
     const addedKey = `url:${id}` as const
     if (addedKey in existingPlugins.added) newPlugins.added[addedKey] = existingPlugins.added[addedKey]
   }
 
-  const ids = Object.keys(existingPlugins.all.url).sort()
-  if (ids.length === 0) return result
+  const allIds = Object.keys(existingPlugins.all.url).sort()
+  if (allIds.length === 0) return result
 
-  const ticked = await prompts.checkbox({
-    message: 'Which URL plugins have a new artifact?',
-    choices: ids.map((id) => {
-      const { version, filename } = existingPlugins.all.url[id]
-      return { name: `${id} ${version} (${filename})`, value: id }
-    }),
-  })
+  const toUpdate =
+    ids.length > 0
+      ? ids
+      : await prompts.checkbox({
+          message: 'Which URL plugins have a new artifact?',
+          choices: allIds.map((id) => {
+            const { version, filename } = existingPlugins.all.url[id]
+            return { name: `${id} ${version} (${filename})`, value: id }
+          }),
+        })
 
-  for (const id of ticked) {
+  for (const id of toUpdate) {
     const old = existingPlugins.all.url[id]
     const url = (
       await prompts.input({ message: `New URL for ${id}:`, validate: (value) => checkNewUrl(value, old.url) })
@@ -63,7 +71,7 @@ export default async function update(existingPlugins: Plugins, newPlugins: Plugi
       })
     ).trim()
 
-    const pin = await pinUrl(newPlugins, id, url)
+    const pin = await pinUrl(newPlugins, { source: 'url', id }, url)
     newPlugins.all.url[id] = { source: 'url', url, version, ...pin, pinnedAt: new Date().toISOString() }
     newPlugins.added[`url:${id}`] = version
 

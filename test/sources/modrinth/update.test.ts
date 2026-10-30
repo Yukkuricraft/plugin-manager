@@ -97,6 +97,7 @@ function existingPlugins(): Plugins {
         }),
       },
       url: {},
+      'gh-release': {},
     },
   }
 }
@@ -106,7 +107,12 @@ function existingPlugins(): Plugins {
  * pointed at the new Minecraft version, but with nothing resolved into it yet.
  */
 function retargeted(existing: Plugins, gameVersion: string): Plugins {
-  return { version: 2, config: { ...existing.config, gameVersion }, added: {}, all: { modrinth: {}, url: {} } }
+  return {
+    version: 2,
+    config: { ...existing.config, gameVersion },
+    added: {},
+    all: { modrinth: {}, url: {}, 'gh-release': {} },
+  }
 }
 
 beforeEach(() => {
@@ -188,7 +194,7 @@ describe('update', () => {
       version: 2,
       config: { loader: 'paper', gameVersion: '1.21.1' },
       added: { 'modrinth:gone': '1.0.0' },
-      all: { modrinth: { gone: modrinthEntry({ slug: 'gone', version: '1.0.0' }) }, url: {} },
+      all: { modrinth: { gone: modrinthEntry({ slug: 'gone', version: '1.0.0' }) }, url: {}, 'gh-release': {} },
     }
     const next = retargeted(existing, '1.21.1')
 
@@ -211,6 +217,7 @@ describe('update', () => {
       all: {
         modrinth: { gone: modrinthEntry({ slug: 'gone', version: '1.0.0', overrides: { gameVersion: '1.21.1' } }) },
         url: {},
+        'gh-release': {},
       },
     }
     const next = retargeted(existing, '1.21.1')
@@ -240,6 +247,7 @@ describe('update', () => {
           fawe: modrinthEntry({ slug: 'fawe', version: '2.15.4', dependedOnBy: new Set(['needswe']) }),
         },
         url: {},
+        'gh-release': {},
       },
     }
     const next = retargeted(existing, '1.21.4')

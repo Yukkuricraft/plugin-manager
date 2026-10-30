@@ -1,4 +1,4 @@
-import { type ModrinthPlugin, type SubstituteRule, type UrlPlugin } from '../src/pluginList.js'
+import { type GhReleasePlugin, type ModrinthPlugin, type SubstituteRule, type UrlPlugin } from '../src/pluginList.js'
 
 /** A lock file entry for tests, with every field defaulted so a test only states what it cares about */
 export function modrinthEntry(fields: Partial<ModrinthPlugin> = {}): ModrinthPlugin {
@@ -22,6 +22,22 @@ export function urlEntry(fields: Partial<UrlPlugin> = {}): UrlPlugin {
   return {
     source: 'url',
     url: 'https://files.example/plugin.jar',
+    version: '1.0.0',
+    filename: 'plugin.jar',
+    sha512: 'sha512-plugin',
+    size: 1,
+    pinnedAt: '2025-01-01T00:00:00Z',
+    ...fields,
+  }
+}
+
+/** A gh-release lock file entry for tests, with every field defaulted so a test only states what it cares about */
+export function ghReleaseEntry(fields: Partial<GhReleasePlugin> = {}): GhReleasePlugin {
+  return {
+    source: 'gh-release',
+    tag: 'plugin/1.0.0',
+    publishedAt: '2025-01-01T00:00:00Z',
+    url: 'https://api.github.com/repos/owner/artifacts/releases/assets/1',
     version: '1.0.0',
     filename: 'plugin.jar',
     sha512: 'sha512-plugin',

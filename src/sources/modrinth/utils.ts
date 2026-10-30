@@ -34,6 +34,8 @@ export interface EmbeddedDependencyInfo {
 export interface RequiredDependencyInfo extends DependencyInfoBase {
   type: 'required'
   dependencies: DependencyInfo[]
+  /** The build the dependency pins, when `DependencyContext.lockOverPins` kept the locked build instead */
+  overriddenPin?: { versionId: string; version: string }
 }
 
 /**
@@ -48,11 +50,15 @@ export interface MiscDependencyInfo {
   versionId: string | null
 }
 
-/** A required dependency that a url plugin already in plugins.json stands in for, so nothing is resolved or locked */
+/**
+ * A required dependency that a url or gh-release plugin already in plugins.json stands in for, so nothing is
+ * resolved or locked
+ */
 export interface SubstitutedDependencyInfo {
   type: 'substituted'
   replacedSlug: string
   substituteId: string
+  substituteSource: 'url' | 'gh-release'
 }
 
 export type DependencyInfo =
@@ -64,12 +70,17 @@ export type DependencyInfo =
 
 /**
  * What dependency resolution needs beyond the loader and Minecraft version: the substitute rules from plugins.json,
- * and the lockfile entries to reuse instead of resolving again. Only add passes `locked`, because update re-resolves
- * every dependency on purpose.
+ * and the lockfile entries to reuse instead of resolving again. Updating every Modrinth plugin passes no `locked`,
+ * because it re-resolves every dependency on purpose.
  */
 export interface DependencyContext {
   substitutes?: Record<string, SubstituteRule>
   locked?: AllModrinthPlugins
+  /**
+   * Project IDs whose locked entry is used even when a dependency pins another build of it. Without this, a pin
+   * skips the lockfile.
+   */
+  lockOverPins?: ReadonlySet<string>
 }
 
 /** Looks up a Modrinth project by slug or ID, for its ID and current slug */
@@ -113,16 +124,30 @@ export async function getDependencyInfo(
         )
         versionId = null
       }
-      if (rule.substituteSource === 'url') {
-        return { type: 'substituted', replacedSlug: rule.slug, substituteId: rule.substitute }
+      if (rule.substituteSource !== 'modrinth') {
+        return {
+          type: 'substituted',
+          replacedSlug: rule.slug,
+          substituteId: rule.substitute,
+          substituteSource: rule.substituteSource,
+        }
       }
       projectId = rule.substitute
     }
 
     // A pinned dependency skips the lockfile and is fetched, so addRequiredDependencies can still compare
     // the pinned build against any locked one
-    const locked = versionId ? undefined : ctx.locked?.[projectId]
+    const locked = versionId && !ctx.lockOverPins?.has(projectId) ? undefined : ctx.locked?.[projectId]
     if (locked) {
+      let overriddenPin: RequiredDependencyInfo['overriddenPin']
+      if (versionId && versionId !== locked.versionId) {
+        const pinnedRes = await client.GET('/project/{id|slug}/version/{id|number}', {
+          params: { path: { 'id|slug': projectId, 'id|number': versionId } },
+        })
+        // The version number only makes the warning about the pin readable, so the ID stands in if it can't be had
+        const version = pinnedRes.data?.version_number ?? pinnedRes.data?.name ?? versionId
+        overriddenPin = { versionId, version }
+      }
       return {
         type: 'required',
         projectSlug: locked.slug ?? undefined,
@@ -136,6 +161,7 @@ export async function getDependencyInfo(
         publishedAt: locked.publishedAt,
         // Its own dependencies were locked along with it
         dependencies: [],
+        overriddenPin,
       }
     }
   }
@@ -337,7 +363,7 @@ export function formatDependencyInfo(info: DependencyInfo, plugins: Plugins, ind
       )
     case 'substituted':
       return chalk.cyanBright(
-        `${symbols.info} ${output.pluginName(info.replacedSlug)} is satisfied by the url plugin ${output.pluginName(info.substituteId)}`,
+        `${symbols.info} ${output.pluginName(info.replacedSlug)} is satisfied by the ${info.substituteSource} plugin ${output.pluginName(info.substituteId)}`,
       )
     case 'required': {
       const indentStr = ' '.repeat(indent + 2)
@@ -356,6 +382,8 @@ export async function getPluginVersion(
     displayFor?: string
     name?: string
     targetVersion?: string
+    /** A Modrinth version ID to use, taking precedence over targetVersion */
+    targetVersionId?: string
     gameVersion?: string
     featured?: boolean
     fromDate?: undefined
@@ -373,6 +401,7 @@ export async function getPluginVersion(
     displayFor?: string
     name?: string
     targetVersion?: string
+    targetVersionId?: string
     gameVersion?: string
     featured?: boolean
     fromDate: string
@@ -391,6 +420,7 @@ export async function getPluginVersion(
     displayFor?: string
     name?: string
     targetVersion?: string
+    targetVersionId?: string
     gameVersion?: string
     featured?: boolean
     fromDate?: string
@@ -402,7 +432,17 @@ export async function getPluginVersion(
   dependencies: DependencyInfo[]
   changelog?: [string, string][]
 }> {
-  const { targetVersion, gameVersion, featured, fromDate, changelog, displayFor, name, dependencyContext } = opts ?? {}
+  const {
+    targetVersion,
+    targetVersionId,
+    gameVersion,
+    featured,
+    fromDate,
+    changelog,
+    displayFor,
+    name,
+    dependencyContext,
+  } = opts ?? {}
   // Dependencies pass name rather than displayFor, since displayFor also triggers the "Getting
   // dependencies of" log below, which would otherwise print once per dependency
   const projectName = name ?? displayFor ?? projectId
@@ -425,7 +465,12 @@ export async function getPluginVersion(
   const supportingGameVersion = gameVersion ? ` supporting Minecraft ${gameVersion}` : ''
 
   let projectVersion: components['schemas']['Version'] | undefined
-  if (targetVersion) {
+  if (targetVersionId) {
+    projectVersion = projectVersions.find((v) => v.id === targetVersionId)
+    if (!projectVersion) {
+      throw new UserError(`Version ${targetVersionId} not found for plugin ${projectName}${supportingGameVersion}`)
+    }
+  } else if (targetVersion) {
     const matchingVersion = projectVersions.filter((v) => v.version_number === targetVersion)
     if (matchingVersion.length === 0) {
       throw new UserError(`Version ${targetVersion} not found for plugin ${projectName}${supportingGameVersion}`)

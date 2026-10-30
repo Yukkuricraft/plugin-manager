@@ -1,5 +1,6 @@
-import { type AllPlugins, type Plugin as BasePlugin, Plugins } from '../pluginList.js'
+import { type AllPlugins, type Plugin as BasePlugin, type PluginSourceName, Plugins } from '../pluginList.js'
 import { type ResolutionFlags } from '../resolution.js'
+import ghReleaseSource from './ghRelease/ghReleaseSource.js'
 import { type Loader } from './modrinth/loaders.js'
 import modrinthSource from './modrinth/modrinthSource.js'
 import { type PluginEntry } from './pluginEntry.js'
@@ -27,8 +28,17 @@ export interface OverrideChange {
   gameVersion: string
 }
 
+/** What an update run changed, for the summary and the changelog */
+export interface UpdateResult {
+  changelog: string
+  removed: string[]
+  added: string[]
+  changed: { identifier: string; oldVersion: string; newVersion: string }[]
+  overrides: OverrideChange[]
+}
+
 export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
-  readonly prefix: 'modrinth' | 'url'
+  readonly prefix: PluginSourceName
 
   search(query: string, loader: Loader, gameVersion?: string): Promise<void>
   findPlugin(query: string, plugins: AllPlugins): Promise<{ plugin: Plugin; id: string } | null>
@@ -38,22 +48,11 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   removePlugin(plugins: Plugins, allToRemove: { plugin: BasePlugin; id: string }[]): void
   /** Downloads this source's plugins into `dir`, which exists and belongs to this source alone */
   install(plugins: AllPlugins, dir: string): Promise<void>
-  update(
-    existingPlugins: Plugins,
-    newPlugins: Plugins,
-    target: UpdateTarget,
-  ): Promise<{
-    changelog: string
-    removed: string[]
-    added: string[]
-    changed: { identifier: string; oldVersion: string; newVersion: string }[]
-    overrides: OverrideChange[]
-  }>
   /** Resolves to whether `plugins` was changed */
   addPlugin(plugins: Plugins, pluginIndicator: string, flags: AddFlags): Promise<boolean>
 }
 
-export const allPluginSources: PluginSource[] = [modrinthSource, urlSource]
+export const allPluginSources: PluginSource[] = [modrinthSource, urlSource, ghReleaseSource]
 
 export function getPluginSource(query: string): { source: PluginSource; strippedQuery: string } {
   const source = allPluginSources.find((s) => query.startsWith(s.prefix + ':'))

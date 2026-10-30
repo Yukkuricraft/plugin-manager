@@ -7,12 +7,19 @@ import { downloadFile, fileHash } from '../../utils/files.js'
 import { output } from '../../utils/output.js'
 import { hostHeaders } from './hostHeaders.js'
 
+type PinnedEntry = { url: string; filename: string; sha512: string }
+
 /**
- * Makes `dir` hold exactly the pinned file of every url entry. A file already there with an entry's filename and
- * sha512 is kept. Everything else is deleted, and whatever is missing is downloaded and checked against its pin.
+ * Makes `dir` hold exactly the pinned file of every entry. A file already there with an entry's filename and sha512
+ * is kept. Everything else is deleted, and whatever is missing is downloaded and checked against its pin.
+ * `addAgain` gives the end of the error for a download that no longer matches its pin.
  */
-export default async function install(plugins: AllPlugins, dir: string): Promise<void> {
-  const entries = Object.entries(plugins.url)
+export async function installPinned(
+  pinned: Record<string, PinnedEntry>,
+  dir: string,
+  addAgain: (id: string) => string,
+): Promise<void> {
+  const entries = Object.entries(pinned)
 
   const kept = new Set<string>()
   for (const file of await fs.readdir(dir)) {
@@ -39,7 +46,7 @@ export default async function install(plugins: AllPlugins, dir: string): Promise
         } catch (e) {
           if (e instanceof HashMismatchError) {
             throw new ValidationError(
-              `${id}: the file at its URL has changed since it was added. If the new file is intended, run add again`,
+              `${id}: the file at its URL has changed since it was added. If the new file is intended, ${addAgain(id)}`,
               { cause: e },
             )
           }
@@ -47,4 +54,8 @@ export default async function install(plugins: AllPlugins, dir: string): Promise
         }
       }),
   )
+}
+
+export default function install(plugins: AllPlugins, dir: string): Promise<void> {
+  return installPinned(plugins.url, dir, () => 'run add again')
 }

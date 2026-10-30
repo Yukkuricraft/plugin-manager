@@ -5,10 +5,9 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HashMismatchError, ValidationError } from '../../../src/errors.js'
-import { type AllPlugins } from '../../../src/pluginList.js'
 import { urlEntry } from '../../testFixtures.js'
 import { hostHeaders } from '../../../src/sources/url/hostHeaders.js'
-import install from '../../../src/sources/url/install.js'
+import { installPinned } from '../../../src/sources/url/install.js'
 
 const { downloadFile } = vi.hoisted(() => ({ downloadFile: vi.fn() }))
 // fileHash stays real, so the files written below are really hashed
@@ -23,9 +22,7 @@ function sha512(contents: string) {
 
 const vault = urlEntry({ url: 'https://files.example/Vault.jar', filename: 'Vault.jar', sha512: sha512('vault') })
 
-function plugins(url: AllPlugins['url']): AllPlugins {
-  return { modrinth: {}, url }
-}
+const addAgain = (id: string) => `re-add ${id}`
 
 let dir: string
 
@@ -43,7 +40,7 @@ describe('url install', () => {
   it('keeps a file with the pinned name and hash, without downloading it', async () => {
     await writeFile(path.join(dir, 'Vault.jar'), 'vault')
 
-    await install(plugins({ vault }), dir)
+    await installPinned({ vault }, dir, addAgain)
 
     expect(downloadFile).not.toHaveBeenCalled()
     expect(await readdir(dir)).toEqual(['Vault.jar'])
@@ -53,7 +50,7 @@ describe('url install', () => {
     await writeFile(path.join(dir, 'Stray.jar'), 'stray')
     await writeFile(path.join(dir, 'Vault.jar'), 'not vault')
 
-    await install(plugins({ vault }), dir)
+    await installPinned({ vault }, dir, addAgain)
 
     expect(await readdir(dir)).toEqual([])
     expect(downloadFile).toHaveBeenCalledWith(vault.url, dir, {
@@ -67,16 +64,18 @@ describe('url install', () => {
   it('says the file behind the URL changed when the download fails its hash check', async () => {
     downloadFile.mockRejectedValue(new HashMismatchError('SHA512 hash mismatch for Vault.jar'))
 
-    const error = await install(plugins({ vault }), dir).catch((e: unknown) => e)
+    const error = await installPinned({ vault }, dir, addAgain).catch((e: unknown) => e)
 
     expect(error).toBeInstanceOf(ValidationError)
-    expect((error as Error).message).toContain('vault: the file at its URL has changed since it was added')
+    expect((error as Error).message).toContain(
+      'vault: the file at its URL has changed since it was added. If the new file is intended, re-add vault',
+    )
   })
 
   it('passes other download errors through unchanged', async () => {
     const failure = new Error('network down')
     downloadFile.mockRejectedValue(failure)
 
-    await expect(install(plugins({ vault }), dir)).rejects.toBe(failure)
+    await expect(installPinned({ vault }, dir, addAgain)).rejects.toBe(failure)
   })
 })

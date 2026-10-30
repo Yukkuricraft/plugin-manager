@@ -1,4 +1,5 @@
 import { type HostTable } from '../../utils/files.js'
+import { githubToken } from '../../utils/github.js'
 
 /**
  * Headers the url source sends to hosts that need more than a plain GET, keyed by `URL.host`. What a host needs is a
@@ -11,7 +12,7 @@ export const hostHeaders: HostTable = {
   'api.github.com': {
     headers: () => {
       const accept = { Accept: 'application/octet-stream' }
-      const token = process.env.GITHUB_TOKEN
+      const token = githubToken()
       return token ? { ...accept, Authorization: `Bearer ${token}` } : accept
     },
     help: 'Private repos need GITHUB_TOKEN set to a token that can read the repo',

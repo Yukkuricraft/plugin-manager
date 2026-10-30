@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { UserError, ValidationError } from '../../../src/errors.js'
 import { type Plugins } from '../../../src/pluginList.js'
-import { modrinthEntry, urlEntry } from '../../testFixtures.js'
+import { ghReleaseEntry, modrinthEntry, urlEntry } from '../../testFixtures.js'
 import { hostHeaders } from '../../../src/sources/url/hostHeaders.js'
 import { parseUrlQuery, pinUrl } from '../../../src/sources/url/pin.js'
 
@@ -17,7 +17,7 @@ function plugins(all: Partial<Plugins['all']> = {}): Plugins {
     version: 2,
     config: { loader: 'paper', gameVersion: '1.21.4' },
     added: {},
-    all: { modrinth: {}, url: {}, ...all },
+    all: { modrinth: {}, url: {}, 'gh-release': {}, ...all },
   }
 }
 
@@ -57,11 +57,12 @@ describe('parseUrlQuery', () => {
 
 describe('pinUrl', () => {
   const pin = { filename: 'Vault.jar', sha512: 'sha512-vault', size: 10 }
+  const self = { source: 'url', id: 'vault' } as const
 
   it('inspects the URL with hostHeaders and the ID as the fallback name', async () => {
     inspectDownload.mockResolvedValue(pin)
 
-    await expect(pinUrl(plugins(), 'vault', 'https://files.example/Vault.jar')).resolves.toEqual(pin)
+    await expect(pinUrl(plugins(), self, 'https://files.example/Vault.jar')).resolves.toEqual(pin)
     expect(inspectDownload).toHaveBeenCalledWith('https://files.example/Vault.jar', hostHeaders, 'vault')
   })
 
@@ -69,21 +70,46 @@ describe('pinUrl', () => {
     inspectDownload.mockResolvedValue(pin)
     const locked = plugins({ modrinth: { abc: modrinthEntry({ slug: 'vaultunlocked', filename: 'Vault.jar' }) } })
 
-    await expect(pinUrl(locked, 'vault', 'https://files.example/Vault.jar')).rejects.toThrow(UserError)
-    await expect(pinUrl(locked, 'vault', 'https://files.example/Vault.jar')).rejects.toThrow('modrinth:vaultunlocked')
+    await expect(pinUrl(locked, self, 'https://files.example/Vault.jar')).rejects.toThrow(UserError)
+    await expect(pinUrl(locked, self, 'https://files.example/Vault.jar')).rejects.toThrow('modrinth:vaultunlocked')
   })
 
   it('refuses a filename another url plugin uses', async () => {
     inspectDownload.mockResolvedValue(pin)
     const locked = plugins({ url: { other: urlEntry({ filename: 'Vault.jar' }) } })
 
-    await expect(pinUrl(locked, 'vault', 'https://files.example/Vault.jar')).rejects.toThrow('url:other')
+    await expect(pinUrl(locked, self, 'https://files.example/Vault.jar')).rejects.toThrow('url:other')
   })
 
   it("doesn't count the entry being pinned again as a clash", async () => {
     inspectDownload.mockResolvedValue(pin)
     const locked = plugins({ url: { vault: urlEntry({ filename: 'Vault.jar' }) } })
 
-    await expect(pinUrl(locked, 'vault', 'https://files.example/Vault-new.jar')).resolves.toEqual(pin)
+    await expect(pinUrl(locked, self, 'https://files.example/Vault-new.jar')).resolves.toEqual(pin)
+  })
+
+  it('refuses a filename a gh-release plugin already uses', async () => {
+    inspectDownload.mockResolvedValue(pin)
+    const locked = plugins({ 'gh-release': { grief: ghReleaseEntry({ filename: 'Vault.jar' }) } })
+
+    await expect(pinUrl(locked, self, 'https://files.example/Vault.jar')).rejects.toThrow('gh-release:grief')
+  })
+
+  it("doesn't count the gh-release entry being re-pinned as a clash", async () => {
+    inspectDownload.mockResolvedValue(pin)
+    const locked = plugins({ 'gh-release': { grief: ghReleaseEntry({ filename: 'Vault.jar' }) } })
+
+    await expect(
+      pinUrl(locked, { source: 'gh-release', id: 'grief' }, 'https://files.example/Vault.jar'),
+    ).resolves.toEqual(pin)
+  })
+
+  it('refuses a url plugin that shares an ID with the gh-release entry being re-pinned', async () => {
+    inspectDownload.mockResolvedValue(pin)
+    const locked = plugins({ url: { grief: urlEntry({ filename: 'Vault.jar' }) } })
+
+    await expect(
+      pinUrl(locked, { source: 'gh-release', id: 'grief' }, 'https://files.example/Vault.jar'),
+    ).rejects.toThrow('url:grief')
   })
 })

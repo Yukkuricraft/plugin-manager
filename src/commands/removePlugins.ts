@@ -33,7 +33,8 @@ export default async function removePlugins(pluginsPath: string, pluginsToRemove
 
     // Keyed off the matched plugin rather than the query, which may be a partial or differently cased slug
     const { plugin, id } = pluginAndId
-    const addedKey: keyof Plugins['added'] = plugin.source === 'modrinth' ? `modrinth:${plugin.slug}` : `url:${id}`
+    const addedKey: keyof Plugins['added'] =
+      plugin.source === 'modrinth' ? `modrinth:${plugin.slug}` : `${plugin.source}:${id}`
     delete plugins.added[addedKey]
 
     const existing = sources.get(source) ?? []
