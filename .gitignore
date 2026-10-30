@@ -8,3 +8,4 @@ unmanagedPlugins
 .yarn
 .env.yarn
 changelog.md
+publish.json

@@ -132,7 +132,7 @@ export interface DownloadPin {
 }
 
 // Every JAR is a ZIP file, and every ZIP file starts with these bytes
-const jarSignature = Buffer.from([0x50, 0x4b, 0x03, 0x04])
+export const jarSignature = Buffer.from([0x50, 0x4b, 0x03, 0x04])
 
 /**
  * Downloads `url` without saving it, and returns what a url entry pins: the name it'll be saved under, its sha512 and

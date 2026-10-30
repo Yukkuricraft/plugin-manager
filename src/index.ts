@@ -4,6 +4,7 @@ import { hideBin } from 'yargs/helpers'
 import addPlugins from './commands/addPlugins.js'
 import initPlugins from './commands/initPlugins.js'
 import installPlugins from './commands/installPlugins.js'
+import publish from './commands/publish.js'
 import removePlugins from './commands/removePlugins.js'
 import searchPlugins from './commands/searchPlugins.js'
 import showPlugins from './commands/showPlugins.js'
@@ -243,6 +244,21 @@ await yargs()
         )
         .demandCommand(1, 'Specify which source to update'),
     () => undefined,
+  )
+  .command(
+    'publish <id> <version> <jar>',
+    'Release a JAR into the gh-release repo as the tag <id>/<version>',
+    (yargs) =>
+      yargs
+        .positional('id', { type: 'string', describe: 'The plugin id, the tag prefix', demandOption: true })
+        .positional('version', { type: 'string', describe: 'The version label, e.g. "3.1.11"', demandOption: true })
+        .positional('jar', { type: 'string', describe: 'Path to the JAR to upload', demandOption: true })
+        .option('repo', {
+          type: 'string',
+          describe:
+            'The GitHub repo to release into, as owner/name. Defaults to the repo saved in ./publish.json, which is asked for and saved if missing',
+        }),
+    async (argv) => publish(argv.id, argv.version, argv.jar, { repo: argv.repo }),
   )
   .completion()
   .help()
