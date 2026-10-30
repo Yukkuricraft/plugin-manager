@@ -38,6 +38,7 @@ let config: string
 let logs: string[]
 
 beforeEach(async () => {
+  vi.stubEnv('GITHUB_TOKEN', 'secret')
   dir = await fs.mkdtemp(path.join(os.tmpdir(), 'publish-'))
   jar = path.join(dir, 'fawe.jar')
   config = path.join(dir, 'publish.json')
@@ -59,10 +60,21 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
   await fs.rm(dir, { recursive: true, force: true })
 })
 
 describe('publish', () => {
+  it('asks for a token that can write before listing releases', async () => {
+    vi.stubEnv('GITHUB_TOKEN', '')
+
+    await expect(publish('fawe', '2.0.0', jar, {}, config)).rejects.toThrow(
+      'Publishing to o/r needs GITHUB_TOKEN set to a fine-grained personal access token with o/r in its repository ' +
+        'access and write access to the repository permission Contents.',
+    )
+    expect(listReleases).not.toHaveBeenCalled()
+  })
+
   it('creates, uploads and publishes <id>/<version>', async () => {
     await publish('fawe', '2.0.0', jar, {}, config)
 

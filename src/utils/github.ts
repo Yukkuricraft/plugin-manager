@@ -38,6 +38,18 @@ export function parseRepo(repo: string): { owner: string; name: string } {
   return { owner: parts[0], name: parts[1] }
 }
 
+/** Returns GITHUB_TOKEN, or throws a UserError saying which fine-grained token `action` needs */
+export function requireGithubToken(action: string, repo: string, access: 'read' | 'write'): string {
+  const token = githubToken()
+  if (token) return token
+  throw new UserError(
+    `${action} needs GITHUB_TOKEN set to a fine-grained personal access token with ${repo} in its repository access ` +
+      `and ${access} access to the repository permission Contents. Create one at ${newTokenUrl}`,
+  )
+}
+
+const newTokenUrl = 'https://github.com/settings/personal-access-tokens/new'
+
 /**
  * Sends one request to GitHub with the token. Throws a UserError before sending if there's no token, and a
  * RequestError carrying the status and GitHub's message if the answer is neither 2xx nor in `allowStatuses`.
@@ -50,10 +62,7 @@ async function request(
   init: { method?: string; headers?: Record<string, string>; body?: BodyInit } = {},
   allowStatuses: number[] = [],
 ): Promise<Response> {
-  const token = githubToken()
-  if (!token) {
-    throw new UserError(`${action} needs GITHUB_TOKEN set to a token with Contents: ${access} on ${repo}`)
-  }
+  const token = requireGithubToken(action, repo, access)
 
   const res = await fetch(url, {
     ...init,

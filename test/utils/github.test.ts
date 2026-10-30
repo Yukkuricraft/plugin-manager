@@ -113,7 +113,9 @@ describe('listReleases', () => {
 
     expect(error).toBeInstanceOf(UserError)
     expect((error as Error).message).toBe(
-      'Listing releases of o/r needs GITHUB_TOKEN set to a token with Contents: read on o/r',
+      'Listing releases of o/r needs GITHUB_TOKEN set to a fine-grained personal access token with o/r in its ' +
+        'repository access and read access to the repository permission Contents. ' +
+        'Create one at https://github.com/settings/personal-access-tokens/new',
     )
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -185,7 +187,8 @@ describe('writing', () => {
     vi.stubEnv('GITHUB_TOKEN', '')
 
     await expect(deleteRelease('o/r', 9)).rejects.toThrow(
-      'Deleting release 9 of o/r needs GITHUB_TOKEN set to a token with Contents: write on o/r',
+      'Deleting release 9 of o/r needs GITHUB_TOKEN set to a fine-grained personal access token with o/r in its ' +
+        'repository access and write access to the repository permission Contents.',
     )
     expect(fetchMock).not.toHaveBeenCalled()
   })

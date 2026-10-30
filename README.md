@@ -266,7 +266,8 @@ Options:
 ```
 
 Both use `GITHUB_TOKEN`, as set up in "Private GitHub releases". The server running `add`, `update gh-release` and
-`install` needs a fine-grained token with `Contents: read` on the release repo. `publish` needs `Contents: write`.
+`install` needs a fine-grained token with read access to the repository permission `Contents` on the release repo.
+`publish` needs write access to it.
 
 ### Updating
 

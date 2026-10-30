@@ -11,6 +11,7 @@ import {
   listReleases,
   parseRepo,
   publishRelease,
+  requireGithubToken,
   tagExists,
   uploadReleaseAsset,
 } from '../utils/github.js'
@@ -120,6 +121,8 @@ export default async function publish(
   await requireJar(jar)
 
   const repo = await resolveRepo(flags.repo, configPath)
+  // Checked here rather than by the first request, which only reads and would ask for too little
+  requireGithubToken(`Publishing to ${repo}`, repo, 'write')
   const all = await listReleases(repo, { includeDrafts: true })
   const taken = new Set(all.map((release) => release.tag_name))
 
