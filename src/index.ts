@@ -16,7 +16,7 @@ import { allLoaders } from './sources/modrinth/loaders.js'
 import { output } from './utils/output.js'
 
 const pluginSourceDescription =
-  'By default, Modrinth is used as a plugin source. This can be made explicit by prefixing the plugin with "modrinth:". You can also prefix the plugin with "url:" to use a URLs instead.'
+  'By default, Modrinth is used as a plugin source. This can be made explicit by prefixing the plugin with "modrinth:". You can also prefix the plugin with "url:" to use a URLs instead, or with "gh-release:" to use a release in the repo set as config.releaseRepo.'
 const urlSyntaxDescription =
   'When adding a plugin from a URL, the syntax is "url:<identifier>@<version>@<url>". The version is a label for the file, such as "1.7.3". The file is downloaded once and pinned by its hash.'
 const addGameVersionDescription =

@@ -131,6 +131,7 @@ export const output = {
     downloads?: number
     version?: string
     versionType?: string
+    tag?: string
     loaders?: string[]
     filename?: string
     size?: number
@@ -164,6 +165,9 @@ export const output = {
     if (data.version) {
       const versionType = data.versionType ? ` ${this.versionType(data.versionType)}` : ''
       console.log(`   ${this.label('Version')} ${this.version(data.version)}${versionType}`)
+    }
+    if (data.tag) {
+      console.log(`   ${this.label('Tag')} ${chalk.white(data.tag)}`)
     }
     if (data.loaders && data.loaders.length > 0) {
       console.log(`   ${this.label('Loader')} ${chalk.blueBright(data.loaders.join(', '))}`)

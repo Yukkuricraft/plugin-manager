@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { UserError } from '../../src/errors.js'
 import { type Plugins } from '../../src/pluginList.js'
-import { modrinthEntry, substituteRule } from '../testFixtures.js'
+import { ghReleaseEntry, modrinthEntry, substituteRule } from '../testFixtures.js'
 import removePlugins from '../../src/commands/removePlugins.js'
 
 const { loadPlugins, writePlugins, installPlugins, findPlugin, removePlugin } = vi.hoisted(() => ({
@@ -82,5 +82,17 @@ describe('removePlugins', () => {
 
     expect(writePlugins).toHaveBeenCalledWith(p, './plugins.json')
     expect(installPlugins).toHaveBeenCalledWith('./plugins.json')
+  })
+
+  it('deletes the added key of a gh-release plugin', async () => {
+    const p = plugins()
+    p.all['gh-release'].vault = ghReleaseEntry()
+    p.added['gh-release:vault'] = '1.0.0'
+    loadPlugins.mockResolvedValue(p)
+    findPlugin.mockResolvedValue({ plugin: p.all['gh-release'].vault, id: 'vault' })
+
+    await removePlugins('./plugins.json', ['gh-release:vault'])
+
+    expect(p.added).toEqual({ 'modrinth:fastasyncworldedit': '1.0.0' })
   })
 })

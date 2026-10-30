@@ -1,5 +1,6 @@
 import { type AllPlugins, type Plugin as BasePlugin, type PluginSourceName, Plugins } from '../pluginList.js'
 import { type ResolutionFlags } from '../resolution.js'
+import ghReleaseSource from './ghRelease/ghReleaseSource.js'
 import { type Loader } from './modrinth/loaders.js'
 import modrinthSource from './modrinth/modrinthSource.js'
 import { type PluginEntry } from './pluginEntry.js'
@@ -53,7 +54,7 @@ export interface PluginSource<Plugin extends BasePlugin = BasePlugin> {
   addPlugin(plugins: Plugins, pluginIndicator: string, flags: AddFlags): Promise<boolean>
 }
 
-export const allPluginSources: PluginSource[] = [modrinthSource, urlSource]
+export const allPluginSources: PluginSource[] = [modrinthSource, urlSource, ghReleaseSource]
 
 export function getPluginSource(query: string): { source: PluginSource; strippedQuery: string } {
   const source = allPluginSources.find((s) => query.startsWith(s.prefix + ':'))
