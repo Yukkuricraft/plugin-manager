@@ -31,7 +31,6 @@ Options:
                   --env instead to name a server set up in environments.json.
                                                                         [string]
   --help          Show help                                            [boolean]
-  --version       Show version number                                  [boolean]
 ```
 
 ### Setting up
@@ -278,8 +277,8 @@ plugins update
 Update the plugins of one source
 
 Commands:
-  plugins update modrinth [plugin..]    Update Modrinth plugins, or all of them
-                                        for a new Minecraft version
+  plugins update modrinth [plugin..]    Update named Modrinth plugins, or all of
+                                        them for a Minecraft version
   plugins update url [plugin..]         Update URL plugins to a new file
   plugins update gh-release [plugin..]  Update gh-release plugins to a release
                                         from the release repo
@@ -300,21 +299,24 @@ at its current version or abort. Nothing is written unless every plugin is eithe
 yarn run-cli update modrinth --help
 plugins update modrinth [plugin..]
 
-Update Modrinth plugins, or all of them for a new Minecraft version
+Update named Modrinth plugins, or all of them for a Minecraft version
 
 Positionals:
-  plugin  Modrinth plugins to update. All of them are updated if none are given
-                                                           [array] [default: []]
+  plugin  Added Modrinth plugins to update, each to a build you pick for the
+          Minecraft version in plugins.json. Dependencies only they use move to
+          their newest build. Without any, every added Modrinth plugin moves to
+          its newest build for --game-version              [array] [default: []]
 
 Options:
-  --game-version, --mc-version  The Minecraft version to update plugins for,
-                                e.g. "1.21.4". Asked for if not given,
-                                defaulting to the one in plugins.json, which is
-                                then updated to match.                  [string]
+  --game-version, --mc-version  The Minecraft version to update every Modrinth
+                                plugin for, e.g. "1.21.4". Asked for if not
+                                given, defaulting to the one in plugins.json,
+                                which is then updated to match. Only without
+                                plugin names.                           [string]
   --featured                    Only consider plugin versions the author has
                                 marked as featured on Modrinth. Does not apply
                                 to dependencies, and is not remembered between
-                                runs.                                  [boolean]
+                                runs. Only without plugin names.       [boolean]
 ```
 
 #### Choosing a build

@@ -19,15 +19,18 @@ import { allLoaders } from './sources/modrinth/loaders.js'
 import { output } from './utils/output.js'
 
 const pluginSourceDescription =
-  'By default, Modrinth is used as a plugin source. This can be made explicit by prefixing the plugin with "modrinth:". You can also prefix the plugin with "url:" to use a URLs instead, or with "gh-release:" to use a release in the repo set as config.releaseRepo.'
+  'A Modrinth plugin by slug, optionally prefixed with "modrinth:", or "url:<id>" or "gh-release:<id>" for a plugin from those sources.'
+const addSourceDescription =
+  'A Modrinth slug or id, optionally prefixed with "modrinth:". "gh-release:<id>" lists the releases tagged <id>/… in config.releaseRepo and pins the one you pick.'
 const urlSyntaxDescription =
-  'When adding a plugin from a URL, the syntax is "url:<identifier>@<version>@<url>". The version is a label for the file, such as "1.7.3". The file is downloaded once and pinned by its hash.'
+  '"url:<id>@<version>@<url>" pins the file at a URL. The version is a label for the file, such as "1.7.3".'
 const addGameVersionDescription =
   'Resolve against this Minecraft version, e.g. "1.20.4", instead of the one in plugins.json, recording it as an override on the plugin. Applies to dependencies too.'
 const updateGameVersionDescription =
-  'The Minecraft version to update plugins for, e.g. "1.21.4". Asked for if not given, defaulting to the one in plugins.json, which is then updated to match.'
+  'The Minecraft version to update every Modrinth plugin for, e.g. "1.21.4". Asked for if not given, defaulting to the one in plugins.json, which is then updated to match. Only without plugin names.'
 const featuredDescription =
   'Only consider plugin versions the author has marked as featured on Modrinth. Does not apply to dependencies, and is not remembered between runs.'
+const updateFeaturedDescription = `${featuredDescription} Only without plugin names.`
 const versionSyntaxDescription =
   'To pin a Modrinth plugin to a specific version, use "<plugin>@<version>". The version must exactly match the Modrinth version number. If omitted, the latest matching version is resolved.'
 const envDescription =
@@ -100,7 +103,7 @@ await yargs()
       yargs
         .positional('plugin', {
           type: 'string',
-          describe: `Plugin to add. Must be Modrinth slug or id. ${pluginSourceDescription} ${urlSyntaxDescription} ${versionSyntaxDescription}`,
+          describe: `Plugin to add. ${addSourceDescription} ${urlSyntaxDescription} ${versionSyntaxDescription}`,
           array: true,
           demandOption: true,
         })
@@ -196,12 +199,13 @@ await yargs()
       yargs
         .command(
           'modrinth [plugin..]',
-          'Update Modrinth plugins, or all of them for a new Minecraft version',
+          'Update named Modrinth plugins, or all of them for a Minecraft version',
           (yargs) =>
             yargs
               .positional('plugin', {
                 type: 'string',
-                describe: 'Modrinth plugins to update. All of them are updated if none are given',
+                describe:
+                  'Added Modrinth plugins to update, each to a build you pick for the Minecraft version in plugins.json. Dependencies only they use move to their newest build. Without any, every added Modrinth plugin moves to its newest build for --game-version',
                 array: true,
               })
               .option('game-version', {
@@ -211,7 +215,7 @@ await yargs()
               })
               .option('featured', {
                 type: 'boolean',
-                describe: featuredDescription,
+                describe: updateFeaturedDescription,
               }),
           async (argv) =>
             updateModrinth(await resolvePluginsPath(argv), argv.plugin ?? [], {
@@ -225,7 +229,7 @@ await yargs()
           (yargs) =>
             yargs.positional('plugin', {
               type: 'string',
-              describe: 'URL plugins that have a new file. Asked for if none are given',
+              describe: 'URL plugins to give a new URL and version. Asked for if none are given',
               array: true,
             }),
           async (argv) => updateUrl(await resolvePluginsPath(argv), argv.plugin ?? []),
@@ -237,7 +241,7 @@ await yargs()
             yargs.positional('plugin', {
               type: 'string',
               describe:
-                'gh-release plugins to update. All of those behind their newest release are asked about if none are given',
+                'gh-release plugins to pick a release for. Without any, each plugin behind its newest release is asked about',
               array: true,
             }),
           async (argv) => updateGhRelease(await resolvePluginsPath(argv), argv.plugin ?? []),
@@ -250,6 +254,9 @@ await yargs()
     'Release a JAR into the gh-release repo as the tag <id>/<version>',
     (yargs) =>
       yargs
+        // publish runs where the JAR is, with no plugins.json
+        .hide('env')
+        .hide('plugins-json')
         .positional('id', { type: 'string', describe: 'The plugin id, the tag prefix', demandOption: true })
         .positional('version', { type: 'string', describe: 'The version label, e.g. "3.1.11"', demandOption: true })
         .positional('jar', { type: 'string', describe: 'Path to the JAR to upload', demandOption: true })
@@ -263,7 +270,8 @@ await yargs()
   .completion()
   .help()
   .recommendCommands()
-  .version()
+  // yargs' --version would fill argv.version, which publish's <version> positional needs
+  .version(false)
   .fail((msg, err, yargs) => {
     if (
       err instanceof ValidationError ||
